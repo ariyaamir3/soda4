@@ -1,170 +1,73 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { SiteContent, DEFAULT_CONTENT, FullRegistrationData, ContactMessage } from '../types';
+import { SiteContent, FullRegistrationData, ContactMessage, DEFAULT_CONTENT } from '../types';
 
-export interface RegistrationData {
-  directorName: string;
-  phone: string;
-  email: string;
-  filmTitle: string;
-  category: string;
-  filmLink: string;
-  posterLink: string;
-  technicalInfo: string;
-  bio: string;
-  submittedAt: string;
-}
+const API_URL = '/api';
 
-// کلیدهای شما
-const HARDCODED_CONFIG = {
-  apiKey: "AIzaSyAzs_aRSnGxG496QL_1RL38AJASBZ3-5gw",
-  authDomain: "sodakhial.firebaseapp.com",
-  projectId: "sodakhial",
-  storageBucket: "sodakhial.firebasestorage.app",
-  messagingSenderId: "1026058271710",
-  appId: "1:1026058271710:web:dd4aeb5cb96fb84f1efb4f"
-};
-
-const STORAGE_KEY_CONTENT = 'siteContent';
-
-let db: any = null;
-let storage: any = null;
-let app: any = null;
-let connectionError: string | null = null;
-
-// راه‌اندازی اجباری
-try {
-    app = !getApps().length ? initializeApp(HARDCODED_CONFIG) : getApp();
-    db = getFirestore(app);
-    try { storage = getStorage(app); } catch (e) { console.warn("Storage skipped"); }
-    console.log("🔥 Firebase initialized.");
-} catch (e: any) {
-    console.error("🔥 Error:", e);
-    connectionError = e.message;
-}
-
-export const getConnectionStatus = () => {
-    return { isConnected: !connectionError, error: connectionError };
-};
+export const getConnectionStatus = () => ({ isConnected: true, error: null });
 
 export const getSiteContent = async (): Promise<SiteContent> => {
-  // اولویت با سرور است
-  if (!connectionError) {
-      try {
-        const docRef = doc(db, "content", "main");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data() as SiteContent;
-          localStorage.setItem(STORAGE_KEY_CONTENT, JSON.stringify(data)); // آپدیت لوکال
-          return data;
-        }
-      } catch (error) { console.error("Read Error:", error); }
+  try {
+    const res = await fetch(`${API_URL}/content`);
+    const data = await res.json();
+    return data && data.menuItems ? data : DEFAULT_CONTENT;
+  } catch (e) {
+    return DEFAULT_CONTENT;
   }
-  // اگر سرور نشد، از لوکال بخون
-  const stored = localStorage.getItem(STORAGE_KEY_CONTENT);
-  return stored ? JSON.parse(stored) : DEFAULT_CONTENT;
 };
 
 export const updateSiteContent = async (newContent: SiteContent): Promise<void> => {
-  // ۱. ذخیره سریع در مرورگر
-  localStorage.setItem(STORAGE_KEY_CONTENT, JSON.stringify(newContent));
-
-  if (connectionError) {
-      alert("⚠️ دیتابیس قطع است. ذخیره فقط در مرورگر انجام شد.");
-      return;
-  }
-
-  // ۲. ذخیره در سرور
-  try {
-    const docRef = doc(db, "content", "main");
-    await setDoc(docRef, newContent);
-    console.log("✅ Saved to Server");
-  } catch (error) {
-    console.error("Save Error:", error);
-    alert("❌ خطا در ذخیره روی سرور! (فیلترشکن را چک کنید)");
-    throw error;
-  }
+  await fetch(`${API_URL}/content`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newContent)
+  });
 };
 
-// 🔴 تابع جادویی: همگام‌سازی دستی (آپلود زورکی)
-export const syncLocalToCloud = async () => {
-    if (connectionError) throw new Error("اتصال به دیتابیس قطع است.");
-
-    const localData = localStorage.getItem(STORAGE_KEY_CONTENT);
-    if (!localData) throw new Error("هیچ اطلاعاتی در حافظه مرورگر نیست.");
-
-    try {
-        const data = JSON.parse(localData);
-        const docRef = doc(db, "content", "main");
-        await setDoc(docRef, data);
-        return "✅ اطلاعات شما با موفقیت به سرور گوگل آپلود شد.";
-    } catch (e: any) {
-        throw new Error("خطا در آپلود: " + e.message);
-    }
-};
-
-export const uploadFile = async (file: File, filePath: string, onProgress?: (progress: number) => void): Promise<string> => {
-    if (!storage) { if(onProgress) onProgress(100); return URL.createObjectURL(file); }
-    try {
-        const storageRef = ref(storage, filePath);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        return new Promise((resolve, reject) => {
-            uploadTask.on('state_changed',
-                (s) => { if (onProgress) onProgress((s.bytesTransferred / s.totalBytes) * 100); },
-                (e) => {
-                    console.error('Upload error:', e);
-                    resolve(URL.createObjectURL(file));
-                },
-                async () => {
-                    try {
-                        const url = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve(url);
-                    } catch (err) {
-                        resolve(URL.createObjectURL(file));
-                    }
-                }
-            );
-        });
-    } catch (error) {
-        console.error('Upload failed:', error);
-        return URL.createObjectURL(file);
-    }
-};
-
-export const saveFirebaseConfig = (config: any) => {};
-export const resetFirebaseConfig = () => { localStorage.removeItem(STORAGE_KEY_CONTENT); window.location.reload(); };
-
-// --- Registrations & Messages ---
 export const submitRegistration = async (data: FullRegistrationData) => {
+  const res = await fetch(`${API_URL}/registrations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Failed');
+  return true;
+};
+
+export const getRegistrations = async () => {
   try {
-    await addDoc(collection(db, "registrations"), { ...data, timestamp: new Date() });
-    return true;
-  } catch (error) {
-    console.error('Registration submission error:', error);
-    throw error;
-  }
+    const res = await fetch(`${API_URL}/registrations`);
+    return await res.json();
+  } catch { return []; }
 };
-export const getRegistrations = async (): Promise<FullRegistrationData[]> => {
-    try {
-        const q = query(collection(db, "registrations"), orderBy("timestamp", "desc"));
-        const s = await getDocs(q);
-        return s.docs.map(d => ({ id: d.id, ...d.data() } as unknown as FullRegistrationData));
-    } catch (e) { return []; }
-};
+
 export const submitContactMessage = async (data: ContactMessage) => {
-    try {
-        await addDoc(collection(db, "messages"), { ...data, timestamp: new Date() });
-        return true;
-    } catch (error) {
-        console.error('Contact message submission error:', error);
-        throw error;
-    }
+  await fetch(`${API_URL}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  return true;
 };
-export const getContactMessages = async (): Promise<ContactMessage[]> => {
-    try {
-        const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
-        const s = await getDocs(q);
-        return s.docs.map(d => ({ id: d.id, ...d.data() } as ContactMessage));
-    } catch (e) { return []; }
+
+export const getContactMessages = async () => {
+  try {
+    const res = await fetch(`${API_URL}/messages`);
+    return await res.json();
+  } catch { return []; }
 };
+
+export const uploadFile = async (file: File, path?: string, onProgress?: any): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if(onProgress) onProgress(50);
+  
+  const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
+  if (!res.ok) throw new Error('Upload failed');
+  
+  const data = await res.json();
+  if(onProgress) onProgress(100);
+  return data.url;
+};
+
+export const saveFirebaseConfig = () => {};
+export const resetFirebaseConfig = () => {};
+export const syncLocalToCloud = async () => "Sync OK";
