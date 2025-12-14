@@ -6,12 +6,17 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      // این خط حیاتی است: @ را به پوشه جاری وصل می‌کند
       '@': path.resolve(__dirname, '.'),
     }
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:3000'
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+      }
     }
   },
   build: {
