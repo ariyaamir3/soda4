@@ -1,7 +1,7 @@
 // services/gemini.ts
 
-// کلید OpenRouter
-const API_KEY = "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"; 
+// کلید OpenRouter را ابتدا از متغیرهای محیطی لیارا می‌خواند، اگر نبود از کلید هاردکد شده استفاده می‌کند
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "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"; 
 
 const MODELS = [
   "google/gemini-2.0-flash-exp:free",
@@ -9,7 +9,7 @@ const MODELS = [
   "meta-llama/llama-3.3-70b-instruct:free",
 ];
 
-// --- اطلاعات نهایی جشنواره (آپدیت شده) ---
+// --- اطلاعات نهایی جشنواره (مهم برای کانتکست هوش مصنوعی) ---
 const FESTIVAL_INFO = `
 توجه: این یک جشنواره کاملاً واقعی و معتبر است.
 نام: نخستین جشنواره فیلم کوتاه هوش مصنوعی «سودای خیال» (Sodaye Khiyal).
@@ -57,26 +57,35 @@ export const PERSONAS = {
   }
 };
 
-export async function askAI(message: string, mode: 'auto' | 'manual' = 'auto') {
+// تابع اصلی درخواست به هوش مصنوعی
+// پارامتر customPrompt برای زمانی است که از پنل ادمین دستور جدیدی صادر شود
+export async function askAI(message: string, mode: 'auto' | 'manual' = 'auto', customPrompt?: string) {
 
+  // حالت دستی (Manual) که فقط یک پیام آماده برمی‌گرداند
   if (mode === 'manual') {
     return { text: getRandomFallback(), status: 'manual', model: 'Pilot' };
   }
 
+  // اگر ادمین پرامپت خاصی نوشته بود (در پنل)، آن را جایگزین پرسونای پیش‌فرض کن
+  const currentSystemInstruction = customPrompt || PERSONAS.assistant.systemInstruction;
+
+  // تلاش برای اتصال به مدل‌ها به ترتیب اولویت
   for (const model of MODELS) {
     try {
+      console.log(`Connecting to AI Model: ${model}...`);
+
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://sodakhial.web.app",
+          "HTTP-Referer": "https://sodayekhiyal.ir",
           "X-Title": "Soodaye Khial"
         },
         body: JSON.stringify({
           model: model,
           messages: [
-            { role: "system", content: PERSONAS.assistant.systemInstruction },
+            { role: "system", content: currentSystemInstruction },
             { role: "user", content: message }
           ]
         })
@@ -90,10 +99,11 @@ export async function askAI(message: string, mode: 'auto' | 'manual' = 'auto') {
         }
       }
     } catch (e) {
-      console.warn(`Model ${model} failed...`);
+      console.warn(`Model ${model} failed. Trying next...`);
     }
   }
 
+  // اگر همه مدل‌ها شکست خوردند
   return { text: getRandomFallback(), status: 'error', model: 'Offline' };
 }
 
