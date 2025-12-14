@@ -1,23 +1,31 @@
 export type EventPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
+export type LightColor = 'red' | 'yellow' | 'green';
+export type BlinkSpeed = 'none' | 'slow' | 'fast';
+export type ChatMode = 'banner' | 'floating'; // حالت بنری یا شناور
 
-export interface SpecialEvent {
-  isActive: boolean;
-  title: { fa: string; en: string };
-  description: { fa: string; en: string };
-  date: string;
-  position: EventPosition;
+export interface SiteContent {
+  videoUrl?: string;
+  logoUrl?: string;
+  logoSize?: number;
+  enableDarkRoom?: boolean;
+  companyName?: { fa: string; en: string };
   posterUrl?: string;
-  mainLink?: string;
-  aiName?: string;
-  enableChat: boolean;
-  enableRegister: boolean;
+  loaderUrl?: string;
+  aiSystemPrompt?: string; // 🟢 دستورالعمل چت هوشمند
+  
+  menuItems: MenuItem[];
+  works?: WorkItem[];
+  articles?: ArticleItem[];
+  eventsList?: EventItem[];
+  specialEvent?: SpecialEvent;
+  about?: AboutSection;
 }
 
 export interface MenuItem {
   id: string;
   title: { fa: string; en: string };
-  description?: { fa: string; en: string };
   link: string;
+  description?: { fa: string; en: string };
 }
 
 export interface WorkItem {
@@ -41,64 +49,60 @@ export interface EventItem {
 
 export interface ArticleItem {
   id: string;
-  title: string;
-  summary: string;
-  content: string;
-  coverUrl?: string;
-  author: string;
+  title: string | { fa: string; en: string };
+  summary: string | { fa: string; en: string };
+  content: string | { fa: string; en: string };
+  coverUrl?: string; // 🟢 عکس مقاله
+  tags?: string; // 🟢 هشتگ‌ها (با کاما جدا شوند)
+  author: string | { fa: string; en: string };
   date: string;
 }
 
-// 🟢 ساختار جدید درباره ما
-export interface SocialLink {
-  platform: 'instagram' | 'x' | 'linkedin' | 'youtube' | 'phone' | 'email';
-  url: string;
+export interface SpecialEvent {
   isActive: boolean;
+  title: { fa: string; en: string };
+  description: { fa: string; en: string };
+  date: string;
+  position: EventPosition;
+  posterUrl?: string;
+  imageUrl?: string;
+  mainLink?: string;
+  aiName?: string;
+  buttonText?: string;
+  enableChat: boolean;
+  enableRegister: boolean;
+  
+  // 🟢 تنظیمات جدید
+  lightColor: LightColor; 
+  blinkSpeed: BlinkSpeed;
+  chatMode: ChatMode; // بنر یا شناور
 }
 
 export interface AboutSection {
   manifesto: { fa: string; en: string };
   address: { fa: string; en: string };
-  socials: SocialLink[];
-}
-
-export interface SiteContent {
-  videoUrl: string;
-  audioUrl?: string;
-  logoUrl: string;
-  logoSize?: number;
-  enableLogoEffect?: boolean;
-  posterUrl?: string;
-  loaderUrl?: string;
-  companyName: { fa: string; en: string };
-  enableDarkRoom?: boolean;
-  menuItems: MenuItem[];
-  works?: WorkItem[];
-  articles?: ArticleItem[];
-  eventsList?: EventItem[];
-  specialEvent?: SpecialEvent;
-  about?: AboutSection; // 🟢 اضافه شد
+  socials: { platform: string; url: string; isActive: boolean }[];
 }
 
 export interface FullRegistrationData {
   id?: string;
-  directorNameFa?: string;
-  directorNameEn?: string;
+  directorNameFa: string;
+  directorNameEn: string;
   artistName?: string;
   gender?: string;
   birthDate?: string;
   nationality?: string;
   country?: string;
   city?: string;
-  phone?: string;
-  email?: string;
+  phone: string;
+  email: string;
   website?: string;
   socialLinks?: string;
-  participantType?: 'individual' | 'group' | 'company';
+  participantType?: string;
   role?: string;
-  filmTitleFa?: string;
-  filmTitleEn?: string;
-  section?: string;
+  filmTitleFa: string;
+  filmTitleEn: string;
+  section: string;
   logline?: string;
   synopsis?: string;
   duration?: string;
@@ -108,19 +112,19 @@ export interface FullRegistrationData {
   aspectRatio?: string;
   resolution?: string;
   softwareUsed?: string;
-  aiModels?: string;
+  aiModels: string;
   aiVersion?: string;
-  humanPercent?: string | number;
-  crew?: { producer?: string; writer?: string; editor?: string; soundDesigner?: string; composer?: string };
+  humanPercent: string;
+  crew: { producer?: string; writer?: string; editor?: string; soundDesigner?: string; composer?: string; };
   dynamicCrew?: { role: string; name: string }[];
-  filmLink?: string;
+  filmLink: string;
   posterLink?: string;
   projectFilesLink?: string;
-  agreedToRules?: boolean;
-  aiGeneratedConfirmed?: boolean;
-  rightsTransferred?: boolean;
-  submittedAt?: string;
-  status?: 'pending' | 'accepted' | 'rejected';
+  agreedToRules: boolean;
+  aiGeneratedConfirmed: boolean;
+  rightsTransferred: boolean;
+  submittedAt: string;
+  status?: string;
 }
 
 export interface ContactMessage {
@@ -131,34 +135,14 @@ export interface ContactMessage {
 }
 
 export const DEFAULT_CONTENT: SiteContent = {
-  videoUrl: '',
-  logoUrl: '',
-  logoSize: 3,
-  companyName: { fa: 'سودای خیال', en: 'Soodaye Khiyal' },
-  enableDarkRoom: false,
   menuItems: [],
   works: [],
-  articles: [],
   eventsList: [],
-  about: { // 🟢 مقادیر پیش‌فرض
-    manifesto: { fa: 'ما رویا می‌سازیم...', en: 'We craft dreams...' },
-    address: { fa: 'تهران، ایران', en: 'Tehran, Iran' },
-    socials: [
-      { platform: 'instagram', url: '', isActive: true },
-      { platform: 'x', url: '', isActive: true },
-      { platform: 'linkedin', url: '', isActive: true },
-      { platform: 'phone', url: '', isActive: true },
-      { platform: 'email', url: '', isActive: true },
-    ]
-  },
-  specialEvent: {
-    isActive: true,
-    title: { fa: 'جشنواره هوش مصنوعی', en: 'AI Film Festival' },
-    description: { fa: 'فراخوان ارسال آثار', en: 'Call for entries' },
-    date: '1404',
-    position: 'top-right',
-    enableChat: true,
-    enableRegister: true,
-    aiName: 'دبیر هوشمند'
+  aiSystemPrompt: 'تو دستیار هوشمند جشنواره سودای خیال هستی. پاسخ‌های کوتاه و سینمایی بده.',
+  about: { manifesto: {fa:'',en:''}, address: {fa:'',en:''}, socials: [] },
+  specialEvent: { 
+    isActive: true, title: {fa:'',en:''}, description: {fa:'',en:''}, date: '', position: 'top-right', 
+    enableChat: true, enableRegister: true,
+    lightColor: 'yellow', blinkSpeed: 'slow', chatMode: 'banner'
   }
 };
