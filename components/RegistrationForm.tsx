@@ -23,14 +23,45 @@ const RegistrationForm: React.FC<Props> = ({ onClose }) => {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const [data, setData] = useState<FullRegistrationData>({
-    directorNameFa: '', directorNameEn: '', artistName: '', gender: 'مرد / Male', birthDate: '', nationality: '', country: '', city: '',
-    phone: '', email: '', website: '', socialLinks: '', participantType: 'individual', role: 'Director / کارگردان',
-    filmTitleFa: '', filmTitleEn: '', section: 'داستانی هوش مصنوعی / AI Fiction', logline: '', synopsis: '', duration: '', productionYear: '', productionCountry: '',
-    fileFormat: 'MP4', aspectRatio: '16:9', resolution: '1080p', softwareUsed: '', aiModels: '', aiVersion: '', humanPercent: '20',
-    crew: {}, dynamicCrew: [],
-    filmLink: '', posterLink: '', projectFilesLink: '',
-    agreedToRules: false, aiGeneratedConfirmed: false, rightsTransferred: false,
-    submittedAt: '', status: 'pending'
+    directorNameFa: '',
+    directorNameEn: '',
+    artistName: '',
+    gender: 'مرد / Male',
+    birthDate: '',
+    nationality: '',
+    country: '',
+    city: '',
+    phone: '',
+    email: '',
+    website: '',
+    socialLinks: '',
+    participantType: 'individual',
+    role: 'Director / کارگردان',
+    filmTitleFa: '',
+    filmTitleEn: '',
+    section: 'داستانی هوش مصنوعی / AI Fiction',
+    logline: '',
+    synopsis: '',
+    duration: '',
+    productionYear: '',
+    productionCountry: '',
+    fileFormat: 'MP4',
+    aspectRatio: '16:9',
+    resolution: '1080p',
+    softwareUsed: '',
+    aiModels: '',
+    aiVersion: '',
+    humanPercent: '20',
+    crew: {},
+    dynamicCrew: [],
+    filmLink: '',
+    posterLink: '',
+    projectFilesLink: '',
+    agreedToRules: false,
+    aiGeneratedConfirmed: false,
+    rightsTransferred: false,
+    submittedAt: '',
+    status: 'pending'
   });
 
   const addCrewMember = () => {
@@ -47,7 +78,21 @@ const RegistrationForm: React.FC<Props> = ({ onClose }) => {
   };
 
   const handleSubmit = async () => {
-    if (!data.agreedToRules) return alert("لطفاً قوانین را بپذیرید / Please accept the rules");
+    if (!data.directorNameFa || !data.directorNameEn) {
+      return alert("لطفاً نام کامل را پر کنید / Please enter full name");
+    }
+    if (!data.filmTitleFa || !data.filmTitleEn) {
+      return alert("لطفاً عنوان فیلم را پر کنید / Please enter film title");
+    }
+    if (!data.email || !data.phone) {
+      return alert("لطفاً ایمیل و تلفن را پر کنید / Please enter email and phone");
+    }
+    if (!data.filmLink) {
+      return alert("لطفاً لینک فیلم را پر کنید / Please enter film link");
+    }
+    if (!data.agreedToRules) {
+      return alert("لطفاً قوانین را بپذیرید / Please accept the rules");
+    }
     setIsSubmitting(true);
     try {
       await submitRegistration({

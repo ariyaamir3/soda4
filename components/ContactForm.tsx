@@ -15,6 +15,10 @@ const ContactForm: React.FC<Props> = ({ language, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!data.name || !data.email || !data.message) {
+      alert(isFa ? 'لطفاً تمام فیلدها را پر کنید' : 'Please fill all fields');
+      return;
+    }
     setStatus('sending');
     try {
         await submitContactMessage({
@@ -24,8 +28,12 @@ const ContactForm: React.FC<Props> = ({ language, onClose }) => {
             date: new Date().toLocaleDateString(isFa ? 'fa-IR' : 'en-US')
         });
         setStatus('success');
+        setTimeout(() => {
+          onClose();
+        }, 2000);
     } catch (error) {
         setStatus('error');
+        alert(isFa ? 'خطا در ارسال پیام' : 'Error sending message');
     }
   };
 

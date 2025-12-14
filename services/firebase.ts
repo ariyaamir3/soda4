@@ -104,19 +104,32 @@ export const syncLocalToCloud = async () => {
     }
 };
 
-export const uploadFile = async (file: File, path: string, onProgress?: (progress: number) => void): Promise<string> => {
+export const uploadFile = async (file: File, filePath: string, onProgress?: (progress: number) => void): Promise<string> => {
     if (!storage) { if(onProgress) onProgress(100); return URL.createObjectURL(file); }
     try {
-        const storageRef = ref(storage, path);
+        const storageRef = ref(storage, filePath);
         const uploadTask = uploadBytesResumable(storageRef, file);
         return new Promise((resolve, reject) => {
-            uploadTask.on('state_changed', 
-                (s) => { if (onProgress) onProgress((s.bytesTransferred / s.totalBytes) * 100); }, 
-                (e) => resolve(URL.createObjectURL(file)), 
-                async () => { resolve(await getDownloadURL(uploadTask.snapshot.ref)); }
+            uploadTask.on('state_changed',
+                (s) => { if (onProgress) onProgress((s.bytesTransferred / s.totalBytes) * 100); },
+                (e) => {
+                    console.error('Upload error:', e);
+                    resolve(URL.createObjectURL(file));
+                },
+                async () => {
+                    try {
+                        const url = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(url);
+                    } catch (err) {
+                        resolve(URL.createObjectURL(file));
+                    }
+                }
             );
         });
-    } catch (error) { return URL.createObjectURL(file); }
+    } catch (error) {
+        console.error('Upload failed:', error);
+        return URL.createObjectURL(file);
+    }
 };
 
 export const saveFirebaseConfig = (config: any) => {};
@@ -124,7 +137,13 @@ export const resetFirebaseConfig = () => { localStorage.removeItem(STORAGE_KEY_C
 
 // --- Registrations & Messages ---
 export const submitRegistration = async (data: FullRegistrationData) => {
-  try { await addDoc(collection(db, "registrations"), { ...data, timestamp: new Date() }); return true; } catch (error) { throw error; }
+  try {
+    await addDoc(collection(db, "registrations"), { ...data, timestamp: new Date() });
+    return true;
+  } catch (error) {
+    console.error('Registration submission error:', error);
+    throw error;
+  }
 };
 export const getRegistrations = async (): Promise<FullRegistrationData[]> => {
     try {
@@ -134,7 +153,13 @@ export const getRegistrations = async (): Promise<FullRegistrationData[]> => {
     } catch (e) { return []; }
 };
 export const submitContactMessage = async (data: ContactMessage) => {
-    try { await addDoc(collection(db, "messages"), { ...data, timestamp: new Date() }); return true; } catch (error) { throw error; }
+    try {
+        await addDoc(collection(db, "messages"), { ...data, timestamp: new Date() });
+        return true;
+    } catch (error) {
+        console.error('Contact message submission error:', error);
+        throw error;
+    }
 };
 export const getContactMessages = async (): Promise<ContactMessage[]> => {
     try {

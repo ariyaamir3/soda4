@@ -19,8 +19,6 @@ const AboutOverlay = lazy(() => import('./components/AboutOverlay'));
 const CallForEntries = lazy(() => import('./components/CallForEntries'));
 
 const App: React.FC = () => {
-  // 🔴 خط تست برای اینکه بفهمیم کد جدید لود شده یا نه
-  console.log("APP VERSION: NO AUDIO - FINAL FIX");
 
   const [content, setContent] = useState<SiteContent | null>(null);
   const [animationFinished, setAnimationFinished] = useState(false);
