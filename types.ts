@@ -10,33 +10,34 @@ export interface AiConfig {
   name: string; // نام ربات (مثلا: دستیار جشنواره)
   systemPrompt: string; // دستورالعمل رفتار
   model: string; // مدل انتخابی
-  lastStatus: 'connected' | 'disconnected' | 'unknown'; // وضعیت اتصال (چراغ سبز/زرد)
+  lastStatus: 'connected' | 'disconnected' | 'unknown';
 }
 
 export interface SiteContent {
   // --- عمومی ---
-  companyName: { fa: string; en: string };
+  companyName?: { fa: string; en: string };
   videoUrl: string;
   posterUrl?: string; // پوستر ویدیو
   logoUrl: string;
   logoSize: number;
-  loaderUrl?: string; // تصویر لودر (اسب سوار)
+  loaderUrl?: string; // تصویر لودر
   enableDarkRoom: boolean; // فعال/غیرفعال کردن اتاق تاریک
 
   // --- تنظیمات هوش مصنوعی (جدید) ---
-  aiConfig: AiConfig;
+  aiConfig?: AiConfig;
+  aiSystemPrompt?: string; // (جهت سازگاری با نسخه‌های قبل)
 
   // --- محتوا ---
   menuItems: MenuItem[];
-  works: WorkItem[];
-  articles: ArticleItem[];
-  eventsList: EventItem[]; // لیست رویدادها (ورک‌شاپ و...)
+  works?: WorkItem[];
+  articles?: ArticleItem[];
+  eventsList?: EventItem[]; 
   
   // --- درباره ما ---
-  about: AboutSection;
+  about?: AboutSection;
 
   // --- بنر جشنواره (رویداد ویژه) ---
-  specialEvent: SpecialEvent;
+  specialEvent?: SpecialEvent;
 }
 
 export interface MenuItem {
@@ -63,7 +64,7 @@ export interface EventItem {
   imageUrl?: string;
   location?: string;
   link?: string;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 export interface ArticleItem {
@@ -85,26 +86,27 @@ export interface SpecialEvent {
   position: EventPosition;
   
   // استایل و ظاهر
-  ticketStyle: TicketStyle; // استایل بلیت (سینمایی/مدرن)
-  lightColor: LightColor;   // رنگ چراغ
-  blinkSpeed: BlinkSpeed;   // سرعت چشمک
+  ticketStyle?: TicketStyle;
+  lightColor?: LightColor;   
+  blinkSpeed?: BlinkSpeed;   
   
   // تصاویر
   posterUrl?: string; // پوستر داخل مودال
+  imageUrl?: string;
   
   // تنظیمات
   mainLink?: string;
   buttonText?: string;
+  aiName?: string; // نام ربات در چت
   enableChat: boolean;
-  chatMode: ChatMode; // داخل بنر یا شناور
+  chatMode?: ChatMode; 
   enableRegister: boolean;
 }
 
 export interface SocialLink {
-  platform: 'instagram' | 'twitter' | 'linkedin' | 'youtube' | 'telegram' | 'whatsapp' | 'email' | 'phone';
+  platform: string;
   url: string;
   isActive: boolean;
-  label?: string; // متن اختیاری
 }
 
 export interface AboutSection {
@@ -113,10 +115,10 @@ export interface AboutSection {
   socials: SocialLink[];
 }
 
-// دیتای کامل ثبت‌نام (شامل شناسه یکتا)
+// دیتای کامل ثبت‌نام (شامل تمام فیلدهای فرم)
 export interface FullRegistrationData {
   id?: string;
-  trackingId: string; // 🟢 شناسه یکتا (Tracking ID)
+  trackingId?: string; 
   
   // هنرمند
   directorNameFa: string;
@@ -129,7 +131,11 @@ export interface FullRegistrationData {
   city?: string;
   phone: string;
   email: string;
-  
+  website?: string;
+  socialLinks?: string;
+  participantType?: string; // individual, group, company
+  role?: string;
+
   // اثر
   filmTitleFa: string;
   filmTitleEn: string;
@@ -142,19 +148,36 @@ export interface FullRegistrationData {
 
   // فنی
   fileFormat?: string;
+  aspectRatio?: string;
   resolution?: string;
   softwareUsed?: string;
   aiModels: string;
+  aiVersion?: string;
   humanPercent: string;
+
+  // عوامل تولید (Crew)
+  crew: {
+    producer?: string;
+    writer?: string;
+    editor?: string;
+    soundDesigner?: string;
+    composer?: string;
+  };
+  dynamicCrew?: { role: string; name: string }[];
 
   // لینک‌ها
   filmLink: string;
   posterLink?: string;
   projectFilesLink?: string;
 
+  // تاییدیه‌ها
+  agreedToRules: boolean;
+  aiGeneratedConfirmed: boolean;
+  rightsTransferred: boolean;
+
   // سیستمی
   submittedAt: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status?: string;
 }
 
 export interface ContactMessage {
@@ -162,11 +185,10 @@ export interface ContactMessage {
   name: string;
   email: string;
   message: string;
-  date: string;
-  isRead?: boolean; // وضعیت خوانده شده
+  date?: string;
 }
 
-// مقادیر پیش‌فرض (برای جلوگیری از کرش در شروع کار)
+// مقادیر پیش‌فرض
 export const DEFAULT_CONTENT: SiteContent = {
   companyName: { fa: 'سودای خیال', en: 'Soodaye Khiyal' },
   videoUrl: '',
@@ -212,6 +234,7 @@ export const DEFAULT_CONTENT: SiteContent = {
     blinkSpeed: 'slow',
     enableChat: true,
     chatMode: 'banner',
-    enableRegister: true
+    enableRegister: true,
+    aiName: 'دستیار هوشمند'
   }
 };
