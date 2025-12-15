@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpecialEvent as SpecialEventType } from "../types";
 import { askAI } from "../services/gemini";
-import { submitRegistration, RegistrationData } from "../services/firebase";
+import { submitRegistration } from "../services/firebase"; // اصلاح شد
 import {
   X,
   MessageSquare,
@@ -39,12 +39,12 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isFa = language === "fa";
 
-  // --- Logic: 1. Light Styles (چراغ چشمک‌زن قابل تنظیم) ---
+  // --- Logic: Light Styles ---
   const getLightStyle = () => {
     const colors: Record<string, string> = { 
-      green: '#10b981', // سبز
-      yellow: '#ffd700', // زرد (طلایی)
-      red: '#ef4444'    // قرمز
+      green: '#10b981', 
+      yellow: '#ffd700', 
+      red: '#ef4444' 
     };
     const speeds: Record<string, string> = { 
       none: 'none', 
@@ -59,7 +59,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     return {
       backgroundColor: color,
       boxShadow: `0 0 15px ${color}`,
-      animation: `${animationName} ${animDuration} ease-in-out infinite`
+      animation: event.blinkSpeed !== 'none' ? `${animationName} ${animDuration} ease-in-out infinite` : 'none'
     };
   };
 
@@ -71,7 +71,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setChatLoading(true);
     
-    // ارسال پرامپت سفارشی ادمین به سرویس
     const response = await askAI(userMsg, "auto", systemPrompt);
     
     setMessages((prev) => [...prev, { role: "ai", text: response.text }]);
@@ -84,7 +83,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
 
   if (!event.isActive) return null;
 
-  // --- Mode 1: Floating Chat (چت شناور پایین صفحه) ---
+  // --- Mode 1: Floating Chat ---
   if (event.chatMode === 'floating') {
     return (
       <div className="fixed bottom-6 left-6 z-[60] flex flex-col items-end pointer-events-auto font-vazir" dir={isFa ? 'rtl' : 'ltr'}>
@@ -96,7 +95,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               className="bg-[#111] border border-white/20 w-80 h-96 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4 backdrop-blur-md"
             >
-              {/* Header Floating */}
               <div className="bg-black/60 p-3 flex justify-between items-center border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -107,7 +105,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
                 </button>
               </div>
 
-              {/* Chat Body */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40">
                 {messages.length === 0 && (
                   <div className="text-center text-white/30 text-xs mt-10">
@@ -126,7 +123,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
                 <div ref={chatEndRef}></div>
               </div>
 
-              {/* Input Area */}
               <form onSubmit={handleChatSend} className="p-2 border-t border-white/10 bg-black/60 flex gap-2">
                 <input 
                   value={input} 
@@ -142,7 +138,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Floating Button */}
         {!isOpen && (
           <motion.button
             onClick={() => setIsOpen(true)}
@@ -159,13 +154,13 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     );
   }
 
-  // --- Mode 2: Standard Banner (بنر بالای صفحه) ---
+  // --- Mode 2: Standard Banner ---
   const posClass =
     event.position === "top-left" ? "top-24 left-8" :
     event.position === "center" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" :
     event.position === "bottom-right" ? "bottom-24 right-8" :
     event.position === "bottom-left" ? "bottom-24 left-8" :
-    "top-24 right-8"; // default top-right
+    "top-24 right-8"; 
 
   return (
     <div className={`fixed z-50 transition-all duration-500 ${isOpen ? "inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center" : posClass}`}>
@@ -180,7 +175,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
         }
       `}</style>
 
-      {/* --- Minimized Ticket (حالت بسته) --- */}
+      {/* --- Minimized Ticket --- */}
       <AnimatePresence>
         {!isOpen && (
           <motion.div
@@ -191,17 +186,14 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
             className="cursor-pointer bg-[#e0e0e0] text-black p-1 relative group max-w-[240px]"
             style={{ animation: "breathe 4s infinite ease-in-out", border: "1px solid transparent" }}
           >
-            {/* سوراخ‌های بلیت */}
             <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-black rounded-r-full border-r border-white/20"></div>
             <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-black rounded-l-full border-l border-white/20"></div>
 
-            {/* چراغ وضعیت (با رنگ و سرعت قابل تنظیم) */}
             <div 
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full z-20 border-2 border-white shadow-lg"
               style={getLightStyle()}
             ></div>
 
-            {/* دکمه فراخوان روی بنر */}
             <div 
               className="absolute -bottom-3 -left-3 z-20 group/icon cursor-pointer"
               onClick={(e) => { e.stopPropagation(); if (onCallForEntriesClick) onCallForEntriesClick(); }}
@@ -244,7 +236,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
         )}
       </AnimatePresence>
 
-      {/* --- Full Modal (حالت باز) --- */}
+      {/* --- Full Modal --- */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -254,7 +246,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
             className="bg-[#111] text-white w-full max-w-lg h-[85vh] md:h-[700px] shadow-2xl rounded-xl border border-white/10 flex flex-col overflow-hidden"
             dir={isFa ? "rtl" : "ltr"}
           >
-            {/* Modal Header */}
             <div className="bg-black/80 p-4 border-b border-white/10 flex justify-between items-center shrink-0 backdrop-blur">
               <h2 className="font-bold text-white font-vazir text-sm md:text-base flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLightStyle().backgroundColor }}></span>
@@ -265,7 +256,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               </button>
             </div>
 
-            {/* Tabs */}
             <div className="flex border-b border-white/10 bg-black/40 shrink-0">
               <TabButton active={activeTab === "info"} onClick={() => setActiveTab("info")} icon={Info} label={isFa ? "اطلاعات" : "Info"} />
               
@@ -283,7 +273,6 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               )}
             </div>
 
-            {/* Content Body */}
             <div className="flex-1 overflow-y-auto p-0 bg-[#0a0a0a] relative">
               <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
 
