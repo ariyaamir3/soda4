@@ -351,3 +351,31 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
                   <form onSubmit={handleChatSend} className="p-4 bg-black/40 border-t border-white/10 flex gap-2">
                     <input
                       value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="..."
+                      className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-3 text-white text-xs outline-none focus:border-white/50 transition"
+                    />
+                    <button type="submit" disabled={chatLoading} className="bg-white text-black p-3 rounded-lg hover:scale-105 transition disabled:opacity-50">
+                      <Send size={18} />
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
+  <button
+    onClick={onClick}
+    className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition border-b-2 ${active ? "bg-white/10 text-white border-white" : "text-gray-500 border-transparent hover:text-gray-300"}`}
+  >
+    <Icon size={14} /> {label}
+  </button>
+);
+
+export default SpecialEvent;
