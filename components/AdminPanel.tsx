@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { SiteContent, ContactMessage, FullRegistrationData, LightColor, BlinkSpeed, ChatMode, DEFAULT_CONTENT } from '../types';
+import { SiteContent, ContactMessage, FullRegistrationData, LightColor, BlinkSpeed, ChatMode, DEFAULT_CONTENT, AiConfig } from '../types';
 import { getRegistrations, getContactMessages, uploadFile } from '../services/firebase';
 import { 
   X, Save, Edit2, Menu, Database, Loader2, Download, Users, Mail, Trash2, 
   Sparkles, Lock, Briefcase, FileText, Info, Eye, Film, Plus, Upload, 
-  CheckCircle2, AlertCircle, RefreshCw, Calendar, MonitorPlay
+  CheckCircle2, AlertCircle, RefreshCw, Calendar, MonitorPlay, Settings
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -186,8 +186,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-light text-white flex items-center gap-3"><Edit2 size={20} className="text-yellow-500" /> <span className="font-bold">پنل مدیریت</span></h2>
             <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full text-[10px] text-gray-400">
-                <div className={`w-2 h-2 rounded-full ${saveStatus === 'success' ? 'bg-green-500' : 'bg-gray-500'}`}></div>
-                وضعیت سرور
+                <div className={`w-2 h-2 rounded-full ${saveStatus === 'success' ? 'bg-green-500' : saveStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'}`}></div>
+                {saveStatus === 'success' ? 'ذخیره شد' : 'آماده'}
             </div>
           </div>
           <button onClick={onClose}><X className="text-white hover:text-red-500 transition"/></button>
@@ -197,9 +197,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
             {/* سایدبار */}
             <div className="w-64 bg-black/50 border-l border-white/5 flex flex-col p-4 gap-2 overflow-y-auto shrink-0 custom-scrollbar">
                 <div className="text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1 mt-2">اصلی</div>
-                <TabBtn active={activeTab==='general'} onClick={()=>setActiveTab('general')} icon={Edit2} label="عمومی & لودر" />
+                <TabBtn active={activeTab==='general'} onClick={()=>setActiveTab('general')} icon={Settings} label="تنظیمات عمومی" />
                 <TabBtn active={activeTab==='ai'} onClick={()=>setActiveTab('ai')} icon={Sparkles} label="هوش مصنوعی" />
-                <TabBtn active={activeTab==='special_event'} onClick={()=>setActiveTab('special_event')} icon={Ticket} label="بنر و فراخوان" />
+                <TabBtn active={activeTab==='special_event'} onClick={()=>setActiveTab('special_event')} icon={Film} label="بنر و فراخوان" />
                 
                 <div className="h-px bg-white/5 my-2 mx-2"></div>
                 <div className="text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1">داده‌ها</div>
@@ -209,7 +209,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                 <div className="h-px bg-white/5 my-2 mx-2"></div>
                 <div className="text-[10px] text-gray-500 uppercase tracking-widest px-2 mb-1">محتوا</div>
                 <TabBtn active={activeTab==='events'} onClick={()=>setActiveTab('events')} icon={Calendar} label="رویدادها" />
-                <TabBtn active={activeTab==='works'} onClick={()=>setActiveTab('works')} icon={Briefcase} label="آثار" />
+                <TabBtn active={activeTab==='works'} onClick={()=>setActiveTab('works')} icon={Briefcase} label="گالری آثار" />
                 <TabBtn active={activeTab==='articles'} onClick={()=>setActiveTab('articles')} icon={FileText} label="مقالات" />
                 <TabBtn active={activeTab==='menu'} onClick={()=>setActiveTab('menu')} icon={Menu} label="منو" />
                 <TabBtn active={activeTab==='about'} onClick={()=>setActiveTab('about')} icon={Info} label="درباره ما" />
@@ -285,10 +285,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                             <h4 className="text-white/60 text-sm font-bold border-b border-white/10 pb-2">تنظیمات ربات</h4>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                <InputGroup label="نام هوش مصنوعی (در چت)" value={formData.aiConfig?.name || 'دستیار'} onChange={v => setFormData({...formData, aiConfig: {...formData.aiConfig, name: v}})} />
+                                <div className="w-full"><label className="block text-[10px] text-gray-500 mb-1">نام ربات</label><input type="text" value={formData.aiConfig?.name || 'دستیار'} onChange={v => setFormData({...formData, aiConfig: {...formData.aiConfig, name: v.target.value} as AiConfig})} className="w-full bg-black/50 border-b border-white/20 py-2 text-white outline-none text-sm"/></div>
                                 <div>
                                     <label className="block text-[10px] text-gray-500 mb-1">مدل انتخابی</label>
-                                    <select value={formData.aiConfig?.model} onChange={e => setFormData({...formData, aiConfig: {...formData.aiConfig, model: e.target.value}})} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs text-white">
+                                    <select value={formData.aiConfig?.model} onChange={e => setFormData({...formData, aiConfig: {...formData.aiConfig, model: e.target.value} as AiConfig})} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs text-white">
                                         <option value="google/gemini-2.0-flash-exp:free">Gemini Flash (سریع)</option>
                                         <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3 (دقیق)</option>
                                     </select>
@@ -299,7 +299,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                                 <label className="block text-[10px] text-gray-500 mb-1">دستورالعمل سیستم (System Prompt)</label>
                                 <textarea 
                                     value={formData.aiConfig?.systemPrompt || ''} 
-                                    onChange={e => setFormData({...formData, aiConfig: {...formData.aiConfig, systemPrompt: e.target.value}})} 
+                                    onChange={e => setFormData({...formData, aiConfig: {...formData.aiConfig, systemPrompt: e.target.value} as AiConfig})} 
                                     className="w-full bg-black/50 border border-white/20 p-3 rounded text-sm text-white h-32 leading-6" 
                                     placeholder="تو یک دستیار سینمایی هستی..." 
                                 />
