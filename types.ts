@@ -1,39 +1,48 @@
-// types.ts
-// تعریف کامل تایپ‌ها برای هماهنگی با تمام بخش‌های سایت
-
 export type EventPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center';
-export type LightColor = 'red' | 'yellow' | 'green';
-export type BlinkSpeed = 'none' | 'slow' | 'fast';
+export type LightColor = 'red' | 'yellow' | 'green' | 'blue';
+export type BlinkSpeed = 'none' | 'slow' | 'normal' | 'fast';
 export type ChatMode = 'banner' | 'floating';
+export type TicketStyle = 'modern' | 'cinema' | 'minimal';
+
+// تنظیمات هوش مصنوعی (متمرکز)
+export interface AiConfig {
+  isActive: boolean;
+  name: string; // نام ربات (مثلا: دستیار جشنواره)
+  systemPrompt: string; // دستورالعمل رفتار
+  model: string; // مدل انتخابی
+  lastStatus: 'connected' | 'disconnected' | 'unknown'; // وضعیت اتصال (چراغ سبز/زرد)
+}
 
 export interface SiteContent {
-  // تنظیمات عمومی
-  videoUrl?: string;
-  audioUrl?: string;
-  logoUrl?: string;
-  logoSize?: number;
-  enableLogoEffect?: boolean;
-  enableDarkRoom?: boolean;
-  companyName?: { fa: string; en: string };
+  // --- عمومی ---
+  companyName: { fa: string; en: string };
+  videoUrl: string;
   posterUrl?: string; // پوستر ویدیو
-  loaderUrl?: string; // عکس لودینگ
-  
-  // تنظیمات هوش مصنوعی
-  aiSystemPrompt?: string; // دستورالعمل رفتار دستیار هوشمند
+  logoUrl: string;
+  logoSize: number;
+  loaderUrl?: string; // تصویر لودر (اسب سوار)
+  enableDarkRoom: boolean; // فعال/غیرفعال کردن اتاق تاریک
 
-  // بخش‌های محتوایی
+  // --- تنظیمات هوش مصنوعی (جدید) ---
+  aiConfig: AiConfig;
+
+  // --- محتوا ---
   menuItems: MenuItem[];
-  works?: WorkItem[];
-  articles?: ArticleItem[];
-  eventsList?: EventItem[];
-  specialEvent?: SpecialEvent;
-  about?: AboutSection;
+  works: WorkItem[];
+  articles: ArticleItem[];
+  eventsList: EventItem[]; // لیست رویدادها (ورک‌شاپ و...)
+  
+  // --- درباره ما ---
+  about: AboutSection;
+
+  // --- بنر جشنواره (رویداد ویژه) ---
+  specialEvent: SpecialEvent;
 }
 
 export interface MenuItem {
   id: string;
   title: { fa: string; en: string };
-  link: string; // کلید لینک مثل 'works', 'contact'
+  link: string; // کلید لینک مثل 'works'
   description?: { fa: string; en: string };
 }
 
@@ -41,8 +50,8 @@ export interface WorkItem {
   id: string;
   title: { fa: string; en: string };
   year: string;
-  imageUrl: string;
-  link?: string;
+  imageUrl: string; // کاور اثر
+  link?: string; // لینک مشاهده
   description?: string;
 }
 
@@ -54,6 +63,7 @@ export interface EventItem {
   imageUrl?: string;
   location?: string;
   link?: string;
+  isActive: boolean;
 }
 
 export interface ArticleItem {
@@ -61,8 +71,8 @@ export interface ArticleItem {
   title: string | { fa: string; en: string };
   summary: string | { fa: string; en: string };
   content: string | { fa: string; en: string };
-  coverUrl?: string; // عکس شاخص مقاله
-  tags?: string;     // هشتگ‌ها (رشته جدا شده با کاما)
+  coverUrl?: string; // عکس مقاله
+  tags?: string;     // تگ‌ها
   author: string | { fa: string; en: string };
   date: string;
 }
@@ -74,34 +84,41 @@ export interface SpecialEvent {
   date: string;
   position: EventPosition;
   
-  // تصاویر و لینک‌ها
-  posterUrl?: string; // پوستر داخل مودال فراخوان
-  imageUrl?: string; 
-  mainLink?: string;
+  // استایل و ظاهر
+  ticketStyle: TicketStyle; // استایل بلیت (سینمایی/مدرن)
+  lightColor: LightColor;   // رنگ چراغ
+  blinkSpeed: BlinkSpeed;   // سرعت چشمک
   
-  // تنظیمات تعاملی
-  aiName?: string;
+  // تصاویر
+  posterUrl?: string; // پوستر داخل مودال
+  
+  // تنظیمات
+  mainLink?: string;
   buttonText?: string;
   enableChat: boolean;
+  chatMode: ChatMode; // داخل بنر یا شناور
   enableRegister: boolean;
-  
-  // تنظیمات ظاهری جدید (چراغ و چت)
-  lightColor?: LightColor; 
-  blinkSpeed?: BlinkSpeed;
-  chatMode?: ChatMode;
+}
+
+export interface SocialLink {
+  platform: 'instagram' | 'twitter' | 'linkedin' | 'youtube' | 'telegram' | 'whatsapp' | 'email' | 'phone';
+  url: string;
+  isActive: boolean;
+  label?: string; // متن اختیاری
 }
 
 export interface AboutSection {
   manifesto: { fa: string; en: string };
   address: { fa: string; en: string };
-  socials: { platform: string; url: string; isActive: boolean }[];
+  socials: SocialLink[];
 }
 
-// دیتای کامل فرم ثبت‌نام (هماهنگ با RegistrationForm.tsx)
+// دیتای کامل ثبت‌نام (شامل شناسه یکتا)
 export interface FullRegistrationData {
   id?: string;
+  trackingId: string; // 🟢 شناسه یکتا (Tracking ID)
   
-  // ۱. مشخصات هنرمند
+  // هنرمند
   directorNameFa: string;
   directorNameEn: string;
   artistName?: string;
@@ -112,12 +129,8 @@ export interface FullRegistrationData {
   city?: string;
   phone: string;
   email: string;
-  website?: string;
-  socialLinks?: string;
-  participantType?: string; // individual, group, company
-  role?: string; // Director, Producer...
-
-  // ۲. مشخصات اثر
+  
+  // اثر
   filmTitleFa: string;
   filmTitleEn: string;
   section: string;
@@ -127,74 +140,78 @@ export interface FullRegistrationData {
   productionYear?: string;
   productionCountry?: string;
 
-  // ۳. اطلاعات فنی
+  // فنی
   fileFormat?: string;
-  aspectRatio?: string;
   resolution?: string;
   softwareUsed?: string;
   aiModels: string;
-  aiVersion?: string;
   humanPercent: string;
 
-  // ۴. عوامل تولید
-  crew: {
-    producer?: string;
-    writer?: string;
-    editor?: string;
-    soundDesigner?: string;
-    composer?: string;
-  };
-  dynamicCrew?: { role: string; name: string }[];
-
-  // ۵. فایل‌ها
+  // لینک‌ها
   filmLink: string;
   posterLink?: string;
   projectFilesLink?: string;
 
-  // ۶. تاییدیه‌ها
-  agreedToRules: boolean;
-  aiGeneratedConfirmed: boolean;
-  rightsTransferred: boolean;
-
   // سیستمی
   submittedAt: string;
-  status?: string; // pending, approved, rejected
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface ContactMessage {
+  id?: string;
   name: string;
   email: string;
   message: string;
-  date?: string;
+  date: string;
+  isRead?: boolean; // وضعیت خوانده شده
 }
 
-// مقادیر پیش‌فرض برای جلوگیری از کرش کردن سایت در اولین اجرا
+// مقادیر پیش‌فرض (برای جلوگیری از کرش در شروع کار)
 export const DEFAULT_CONTENT: SiteContent = {
+  companyName: { fa: 'سودای خیال', en: 'Soodaye Khiyal' },
   videoUrl: '',
   logoUrl: '',
   logoSize: 3,
   enableDarkRoom: false,
-  companyName: { fa: 'سودای خیال', en: 'Soodaye Khiyal' },
-  menuItems: [],
+  
+  aiConfig: {
+    isActive: true,
+    name: 'دستیار هوشمند',
+    systemPrompt: 'تو دستیار هوشمند جشنواره هستی.',
+    model: 'google/gemini-2.0-flash-exp:free',
+    lastStatus: 'unknown'
+  },
+
+  menuItems: [
+    { id: '1', title: {fa:'آرشیو',en:'Archive'}, link: 'works' },
+    { id: '2', title: {fa:'مقالات',en:'Blog'}, link: 'articles' },
+    { id: '3', title: {fa:'درباره ما',en:'About'}, link: 'about' },
+    { id: '4', title: {fa:'تماس',en:'Contact'}, link: 'contact' },
+  ],
   works: [],
   articles: [],
   eventsList: [],
-  aiSystemPrompt: 'تو دستیار هوشمند جشنواره هستی. پاسخ‌های کوتاه و سینمایی بده.',
+  
   about: {
     manifesto: { fa: '', en: '' },
     address: { fa: '', en: '' },
-    socials: []
+    socials: [
+      { platform: 'instagram', url: '', isActive: true },
+      { platform: 'email', url: '', isActive: true }
+    ]
   },
+  
   specialEvent: {
     isActive: true,
     title: { fa: 'جشنواره هوش مصنوعی', en: 'AI Film Festival' },
     description: { fa: 'فراخوان ارسال آثار', en: 'Call for Entries' },
     date: '1404',
     position: 'top-right',
-    enableChat: true,
-    enableRegister: true,
+    ticketStyle: 'cinema',
     lightColor: 'yellow',
     blinkSpeed: 'slow',
-    chatMode: 'banner'
+    enableChat: true,
+    chatMode: 'banner',
+    enableRegister: true
   }
 };
