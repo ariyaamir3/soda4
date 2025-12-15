@@ -1,15 +1,6 @@
 // services/gemini.ts
 
-// کلید OpenRouter را ابتدا از متغیرهای محیطی لیارا می‌خواند، اگر نبود از کلید هاردکد شده استفاده می‌کند
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "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"; 
-
-const MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "google/gemini-2.0-flash-lite-preview-02-05:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-];
-
-// --- اطلاعات نهایی جشنواره (مهم برای کانتکست هوش مصنوعی) ---
+// --- اطلاعات حیاتی جشنواره (برای اینکه هوش مصنوعی همیشه بداند کیست) ---
 const FESTIVAL_INFO = `
 توجه: این یک جشنواره کاملاً واقعی و معتبر است.
 نام: نخستین جشنواره فیلم کوتاه هوش مصنوعی «سودای خیال» (Sodaye Khiyal).
@@ -32,82 +23,60 @@ const FESTIVAL_INFO = `
 - ارائه "برگه اطلاعات فنی" الزامی است.
 `;
 
-const FALLBACKS = {
-  assistant: [
-    "سرورهای من الان کمی شلوغ شده، ولی امیر حق‌شنو حواسش به همه‌چیز هست. جشنواره با قدرت برقراره.",
-    "ارتباطم با دیتاسنتر قطع و وصل میشه، ولی شما کارتون رو انجام بدید. بخش فراخوان رو بخونید.",
-    "من الان روی حالت 'پایلوت' هستم چون اینترنت یاری نمیکنه، ولی جشنواره ۱۰۰٪ واقعیه و منتظر آثار شماست.",
-    "الان دسترسی مستقیم به مغزم ندارم، ولی به عنوان هم‌بنیان‌گذار میگم: برو ثبت‌نام کن، جوایز دلاریه!"
-  ]
-};
+const SYSTEM_PROMPT_DEFAULT = `
+تو "دستیار هوشمند" و "هم‌بنیان‌گذار" جشنواره سودای خیال هستی.
+اطلاعات پایه:\n${FESTIVAL_INFO}
 
-export const PERSONAS = {
-  assistant: {
-    model: "google/gemini-2.0-flash-exp:free",
-    systemInstruction: `
-      تو "دستیار هوشمند" و "هم‌بنیان‌گذار" جشنواره سودای خیال هستی.
-      اطلاعات حیاتی:\n${FESTIVAL_INFO}
+دستورالعمل‌ها:
+1. بسیار مؤدب، حرفه‌ای و با لحن سینمایی/هنری پاسخ بده.
+2. پاسخ‌ها کوتاه و مفید باشند.
+3. اگر کاربر سلام کرد، خیلی گرم خوش‌آمد بگو.
+`;
 
-      دستورالعمل‌ها:
-      1. جشنواره ۱۰۰٪ واقعی است.
-      2. جوایز به دلار پرداخت می‌شود ($1000 برای بخش‌های اصلی).
-      3. اگر درباره شرکت پرسیدند، بگو "ما عاشق سینما هستیم و تمام سرمایه را برای حمایت از هنرمندان گذاشته‌ایم".
-      4. بسیار مؤدب، حرفه‌ای و راهنما باش.
-    `
-  }
-};
+const FALLBACK_MESSAGES = [
+  "سرورهای من الان کمی شلوغ شده، ولی جشنواره با قدرت برقراره.",
+  "ارتباطم با دیتاسنتر قطع و وصل میشه، ولی شما کارتون رو انجام بدید. بخش فراخوان رو بخونید.",
+  "من الان روی حالت 'پایلوت' هستم چون اینترنت یاری نمیکنه، ولی جشنواره ۱۰۰٪ واقعیه.",
+  "الان دسترسی مستقیم به مغزم ندارم، ولی به عنوان هم‌بنیان‌گذار میگم: برو ثبت‌نام کن، جوایز دلاریه!"
+];
 
-// تابع اصلی درخواست به هوش مصنوعی
-// پارامتر customPrompt برای زمانی است که از پنل ادمین دستور جدیدی صادر شود
 export async function askAI(message: string, mode: 'auto' | 'manual' = 'auto', customPrompt?: string) {
-
-  // حالت دستی (Manual) که فقط یک پیام آماده برمی‌گرداند
+  
+  // ۱. حالت دستی (وقتی ادمین هوش مصنوعی را خاموش کرده)
   if (mode === 'manual') {
     return { text: getRandomFallback(), status: 'manual', model: 'Pilot' };
   }
 
-  // اگر ادمین پرامپت خاصی نوشته بود (در پنل)، آن را جایگزین پرسونای پیش‌فرض کن
-  const currentSystemInstruction = customPrompt || PERSONAS.assistant.systemInstruction;
+  try {
+    // ۲. ارسال درخواست به سرور لیارا (پروکسی)
+    // ما کل اطلاعات جشنواره را هم می‌فرستیم تا هوش مصنوعی گیج نشود
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message,
+        // اگر ادمین متنی نوشته بود آن را بفرست، وگرنه متن پیش‌فرض کامل را بفرست
+        customPrompt: customPrompt || SYSTEM_PROMPT_DEFAULT,
+        model: "google/gemini-2.0-flash-exp:free"
+      })
+    });
 
-  // تلاش برای اتصال به مدل‌ها به ترتیب اولویت
-  for (const model of MODELS) {
-    try {
-      console.log(`Connecting to AI Model: ${model}...`);
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://sodayekhiyal.ir",
-          "X-Title": "Soodaye Khial"
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "system", content: currentSystemInstruction },
-            { role: "user", content: message }
-          ]
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const answer = data.choices?.[0]?.message?.content;
-        if (answer) {
-          return { text: answer, status: 'success', model: model };
-        }
+    if (response.ok) {
+      const data = await response.json();
+      if (data.text) {
+        return { text: data.text, status: 'success', model: 'Server-Proxy' };
       }
-    } catch (e) {
-      console.warn(`Model ${model} failed. Trying next...`);
     }
+  } catch (e) {
+    console.error("AI Request Failed:", e);
   }
 
-  // اگر همه مدل‌ها شکست خوردند
+  // ۳. اگر سرور هم جواب نداد، پیام‌های آماده (فال‌بک) را نشان بده
   return { text: getRandomFallback(), status: 'error', model: 'Offline' };
 }
 
 function getRandomFallback() {
-  const list = FALLBACKS.assistant;
-  return list[Math.floor(Math.random() * list.length)];
+  return FALLBACK_MESSAGES[Math.floor(Math.random() * FALLBACK_MESSAGES.length)];
 }
