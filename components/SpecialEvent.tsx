@@ -12,7 +12,8 @@ import {
   Minimize2,
   Ticket,
   ChevronLeft,
-  Bot
+  Bot,
+  Globe
 } from "lucide-react";
 
 interface SpecialEventProps {
@@ -21,7 +22,7 @@ interface SpecialEventProps {
   onClose: () => void;
   onRegisterClick: () => void;
   onCallForEntriesClick?: () => void;
-  systemPrompt?: string; // دستورالعمل هوش مصنوعی از پنل ادمین
+  systemPrompt?: string;
 }
 
 const SpecialEvent: React.FC<SpecialEventProps> = ({
@@ -41,6 +42,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
   const isFa = language === "fa";
 
   // --- دیکشنری کلمات (دوزبانه) ---
+  // 🟢 اصلاح: کلید website اضافه شد تا خطای بیلد رفع شود
   const t = {
     register: isFa ? "ثبت‌نام در جشنواره" : "Register Now",
     info: isFa ? "اطلاعات" : "Info",
@@ -49,10 +51,12 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     placeholder: isFa ? "سوال شما..." : "Your question...",
     welcome: isFa ? "سلام! درباره جشنواره سوالی دارید؟" : "Hi! Any questions about the festival?",
     send: isFa ? "ارسال" : "Send",
-    ticketLabel: isFa ? "رویداد ویژه" : "SPECIAL EVENT"
+    ticketLabel: isFa ? "رویداد ویژه" : "SPECIAL EVENT",
+    deadline: isFa ? "مهلت ارسال:" : "Deadline:",
+    website: isFa ? "وبسایت:" : "Website:",
   };
 
-  // --- تنظیمات چراغ چشمک‌زن (از پنل ادمین) ---
+  // --- تنظیمات چراغ چشمک‌زن ---
   const getLightStyle = () => {
     const colors: Record<string, string> = { 
       green: '#10b981', 
@@ -68,14 +72,14 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     };
 
     const color = colors[event.lightColor || 'yellow'];
-    const animation = event.blinkSpeed === 'none' 
+    const anim = event.blinkSpeed === 'none' 
       ? 'none' 
       : `glowPulse ${speeds[event.blinkSpeed || 'slow']} infinite ease-in-out`;
 
     return {
       backgroundColor: color,
       boxShadow: `0 0 15px ${color}`,
-      animation: animation
+      animation: anim
     };
   };
 
@@ -89,14 +93,13 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setChatLoading(true);
     
-    // اتصال به سرور پروکسی (با پرامپت ادمین)
+    // اتصال به سرور پروکسی
     const response = await askAI(userMsg, "auto", systemPrompt);
     
     setMessages((prev) => [...prev, { role: "ai", text: response.text }]);
     setChatLoading(false);
   };
 
-  // اسکرول خودکار چت به پایین
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -106,10 +109,9 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
   // --- موقعیت بنر ---
   const posClass =
     event.position === "top-left" ? "top-24 left-4 md:left-8" :
-    event.position === "center" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" :
     event.position === "bottom-right" ? "bottom-24 right-4 md:right-8" :
     event.position === "bottom-left" ? "bottom-24 left-4 md:left-8" :
-    "top-24 right-4 md:right-8"; // پیش‌فرض: بالا راست
+    "top-24 right-4 md:right-8"; 
 
   // ==========================================
   // حالت ۱: چت شناور (Floating Button)
@@ -125,7 +127,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               className="bg-[#111] border border-white/20 w-80 h-96 rounded-2xl shadow-2xl flex flex-col overflow-hidden mb-4 backdrop-blur-md"
             >
-              {/* هدر چت شناور */}
+              {/* هدر چت */}
               <div className="bg-gradient-to-r from-blue-900/50 to-black p-3 flex justify-between items-center border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -137,7 +139,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               </div>
 
               {/* بدنه پیام‌ها */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40 custom-scrollbar">
                 {messages.length === 0 && (
                   <div className="text-center text-white/30 text-xs mt-10">
                     <Bot size={32} className="mx-auto mb-2 opacity-50"/>
@@ -206,7 +208,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
             >
                 {/* بخش چپ بلیت (کوچک) - سوراخ‌دار */}
                 <div className="w-16 bg-black border-r-2 border-dashed border-white/20 flex flex-col items-center justify-center relative overflow-hidden rounded-l-lg">
-                    <span className="-rotate-90 text-white/50 text-[10px] font-mono tracking-widest whitespace-nowrap">NO: {Math.floor(Math.random()*9999)}</span>
+                    <span className="-rotate-90 text-white/50 text-[10px] font-mono tracking-widest whitespace-nowrap">NO: 2026</span>
                     <div className="absolute -right-2 top-0 bottom-0 w-4 cinema-ticket-holes opacity-20"></div>
                 </div>
 
@@ -308,13 +310,13 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
 
                             <div className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 text-xs">
                                 <div className="flex justify-between border-b border-white/5 pb-2">
-                                    <span className="text-white/50">{isFa ? "مهلت ارسال:" : "Deadline:"}</span>
+                                    <span className="text-white/50">{t.deadline}</span>
                                     <span className="text-yellow-500 font-mono tracking-wider">{event.date}</span>
                                 </div>
                                 {event.mainLink && (
                                     <div className="flex justify-between">
                                         <span className="text-white/50">{t.website}</span>
-                                        <a href={`https://${event.mainLink}`} target="_blank" className="text-blue-400 hover:underline">{event.mainLink}</a>
+                                        <a href={`https://${event.mainLink}`} target="_blank" className="text-blue-400 hover:underline flex items-center gap-1"><Globe size={12}/> {event.mainLink}</a>
                                     </div>
                                 )}
                             </div>
@@ -357,7 +359,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
                     )}
                 </div>
 
-                {/* فوتر ثابت: دکمه ثبت نام (Sticky Footer) */}
+                {/* فوتر ثابت: دکمه ثبت نام */}
                 {event.enableRegister && (
                     <div className="p-4 bg-gradient-to-t from-black via-black to-black/80 border-t border-white/10 backdrop-blur shrink-0 absolute bottom-0 left-0 right-0 z-20">
                         <button 
