@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SpecialEvent as SpecialEventType } from "../types";
 import { askAI } from "../services/gemini";
-import { submitRegistration } from "../services/firebase"; // اصلاح شد
 import {
   X,
   MessageSquare,
@@ -11,7 +10,8 @@ import {
   Loader2,
   Info,
   Minimize2,
-  Maximize2
+  Ticket,
+  ChevronLeft
 } from "lucide-react";
 
 interface SpecialEventProps {
@@ -39,7 +39,7 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const isFa = language === "fa";
 
-  // --- Logic: Light Styles ---
+  // --- تنظیمات ظاهری چراغ (از پنل ادمین) ---
   const getLightStyle = () => {
     const colors: Record<string, string> = { 
       green: '#10b981', 
@@ -53,24 +53,28 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     };
 
     const color = colors[event.lightColor || 'yellow'];
-    const animDuration = speeds[event.blinkSpeed || 'slow'];
-    const animationName = event.blinkSpeed === 'none' ? 'none' : 'glowPulse';
+    const animation = event.blinkSpeed === 'none' 
+      ? 'none' 
+      : `glowPulse ${speeds[event.blinkSpeed || 'slow']} infinite ease-in-out`;
 
     return {
       backgroundColor: color,
       boxShadow: `0 0 15px ${color}`,
-      animation: event.blinkSpeed !== 'none' ? `${animationName} ${animDuration} ease-in-out infinite` : 'none'
+      animation: animation
     };
   };
 
+  // --- ارسال پیام به هوش مصنوعی ---
   const handleChatSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    
     const userMsg = input;
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setChatLoading(true);
     
+    // اتصال به سرور پروکسی
     const response = await askAI(userMsg, "auto", systemPrompt);
     
     setMessages((prev) => [...prev, { role: "ai", text: response.text }]);
@@ -83,10 +87,34 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
 
   if (!event.isActive) return null;
 
-  // --- Mode 1: Floating Chat ---
+  // --- دیکشنری کلمات (دوزبانه) ---
+  const t = {
+    registerNow: isFa ? "ثبت‌نام مستقیم" : "Register Now",
+    info: isFa ? "اطلاعات جشنواره" : "Festival Info",
+    chat: event.aiName || (isFa ? "دستیار هوشمند" : "AI Assistant"),
+    readManifesto: isFa ? "مطالعه فراخوان کامل" : "Read Full Manifesto",
+    placeholder: isFa ? "سوال خود را بپرسید..." : "Ask a question...",
+    welcomeChat: isFa ? "سلام! درباره جشنواره سوالی دارید؟" : "Hi! Any questions about the festival?",
+    deadline: isFa ? "مهلت ارسال:" : "Deadline:",
+    website: isFa ? "وبسایت:" : "Website:",
+    submit: isFa ? "ارسال" : "Send",
+    close: isFa ? "بستن" : "Close",
+    hubTitle: isFa ? "دبیرخانه جشنواره" : "Festival Hub"
+  };
+
+  // --- موقعیت بنر ---
+  const posClass =
+    event.position === "top-left" ? "top-24 left-4 md:left-8" :
+    event.position === "bottom-right" ? "bottom-24 right-4 md:right-8" :
+    event.position === "bottom-left" ? "bottom-24 left-4 md:left-8" :
+    "top-24 right-4 md:right-8"; // پیش‌فرض
+
+  // ==========================================
+  // حالت ۱: چت شناور (Floating Button)
+  // ==========================================
   if (event.chatMode === 'floating') {
     return (
-      <div className="fixed bottom-6 left-6 z-[60] flex flex-col items-end pointer-events-auto font-vazir" dir={isFa ? 'rtl' : 'ltr'}>
+      <div className="fixed bottom-6 left-6 z-[60] flex flex-col items-end font-vazir" dir={isFa ? 'rtl' : 'ltr'}>
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -98,25 +126,21 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               <div className="bg-black/60 p-3 flex justify-between items-center border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                  <span className="text-xs font-bold text-white">{event.aiName || (isFa ? "دستیار هوشمند" : "AI Assistant")}</span>
+                  <span className="text-xs font-bold text-white">{t.chat}</span>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="text-white/50 hover:text-white transition">
-                  <Minimize2 size={16} />
-                </button>
+                <button onClick={() => setIsOpen(false)}><Minimize2 size={16} className="text-white/50 hover:text-white"/></button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-black/40">
                 {messages.length === 0 && (
                   <div className="text-center text-white/30 text-xs mt-10">
                     <MessageSquare size={32} className="mx-auto mb-2 opacity-50"/>
-                    <p>{isFa ? "سلام! چطور می‌توانم کمک کنم؟" : "Hello! How can I help?"}</p>
+                    <p>{t.welcomeChat}</p>
                   </div>
                 )}
                 {messages.map((m, i) => (
                   <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-2.5 rounded-xl text-xs leading-5 ${m.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-white/10 text-white rounded-bl-sm border border-white/5'}`}>
-                      {m.text}
-                    </div>
+                    <div className={`max-w-[85%] p-2.5 rounded-xl text-xs leading-5 ${m.role === 'user' ? 'bg-white text-black rounded-br-sm' : 'bg-white/10 text-white rounded-bl-sm border border-white/5'}`}>{m.text}</div>
                   </div>
                 ))}
                 {chatLoading && <Loader2 size={16} className="animate-spin text-white/50 mx-auto" />}
@@ -124,28 +148,16 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
               </div>
 
               <form onSubmit={handleChatSend} className="p-2 border-t border-white/10 bg-black/60 flex gap-2">
-                <input 
-                  value={input} 
-                  onChange={(e) => setInput(e.target.value)} 
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-white/30 transition"
-                  placeholder={isFa ? "پیام..." : "Message..."}
-                />
-                <button type="submit" disabled={chatLoading} className="bg-white text-black p-2 rounded-lg hover:bg-gray-200 transition">
-                  <Send size={16} />
-                </button>
+                <input value={input} onChange={(e) => setInput(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none" placeholder={t.placeholder} />
+                <button type="submit" disabled={chatLoading} className="bg-white text-black p-2 rounded-lg hover:bg-gray-200"><Send size={16} /></button>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
 
         {!isOpen && (
-          <motion.button
-            onClick={() => setIsOpen(true)}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#1a1a1a] to-[#333] border border-white/20 shadow-[0_0_20px_rgba(0,0,0,0.5)] flex items-center justify-center group overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition"></div>
+          <motion.button onClick={() => setIsOpen(true)} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#1a1a1a] to-[#333] border border-white/20 shadow-lg flex items-center justify-center group">
+            <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 rounded-full"></div>
             <MessageSquare size={24} className="text-white relative z-10" />
             <div className="absolute top-3 right-3 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
           </motion.button>
@@ -154,217 +166,179 @@ const SpecialEvent: React.FC<SpecialEventProps> = ({
     );
   }
 
-  // --- Mode 2: Standard Banner ---
-  const posClass =
-    event.position === "top-left" ? "top-24 left-8" :
-    event.position === "center" ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" :
-    event.position === "bottom-right" ? "bottom-24 right-8" :
-    event.position === "bottom-left" ? "bottom-24 left-8" :
-    "top-24 right-8"; 
-
+  // ==========================================
+  // حالت ۲: بنر جشنواره (Ticket Style)
+  // ==========================================
   return (
-    <div className={`fixed z-50 transition-all duration-500 ${isOpen ? "inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center" : posClass}`}>
+    <>
       <style>{`
-        @keyframes breathe {
-          0%, 100% { box-shadow: 0 20px 50px rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.1); }
-          50% { box-shadow: 0 0 25px rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
-        }
-        @keyframes glowPulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(0.8); }
-        }
+        @keyframes glowPulse { 0%, 100% { opacity: 1; box-shadow: 0 0 10px currentColor; } 50% { opacity: 0.5; box-shadow: 0 0 20px currentColor; } }
       `}</style>
 
-      {/* --- Minimized Ticket --- */}
+      {/* --- بنر بسته (روی صفحه) --- */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.div
-            initial={{ scale: 0, rotate: 5 }}
-            animate={{ scale: 1, rotate: -2 }}
-            exit={{ scale: 0 }}
-            onClick={() => setIsOpen(true)}
-            className="cursor-pointer bg-[#e0e0e0] text-black p-1 relative group max-w-[240px]"
-            style={{ animation: "breathe 4s infinite ease-in-out", border: "1px solid transparent" }}
-          >
-            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-black rounded-r-full border-r border-white/20"></div>
-            <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-black rounded-l-full border-l border-white/20"></div>
-
-            <div 
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full z-20 border-2 border-white shadow-lg"
-              style={getLightStyle()}
-            ></div>
-
-            <div 
-              className="absolute -bottom-3 -left-3 z-20 group/icon cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); if (onCallForEntriesClick) onCallForEntriesClick(); }}
+          <div className={`fixed z-50 ${posClass} flex flex-col items-end font-vazir scale-90 md:scale-100 origin-top-right transition-transform`}>
+            
+            {/* بدنه اصلی تیکت */}
+            <motion.div
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              onClick={() => setIsOpen(true)}
+              className="relative bg-[#e5e5e5] text-black w-64 rounded-sm shadow-2xl cursor-pointer group hover:-translate-x-2 transition-transform duration-300"
             >
-              <div className="bg-black text-[#ffd700] p-2 rounded-full border border-[#ffd700]/30 shadow-lg hover:scale-110 transition">
-                <FileText size={16} />
-              </div>
-            </div>
+                {/* چراغ وضعیت */}
+                <div className="absolute top-3 right-3 w-3 h-3 rounded-full z-20 border border-white/50" style={getLightStyle()}></div>
 
-            <div className="border-2 border-dashed border-black/20 p-4 flex flex-col items-start gap-2 relative overflow-hidden bg-[#f0f0f0]">
-              <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-              
-              <div className="flex justify-between w-full items-start mb-1">
-                <span className="bg-black text-white text-[9px] px-2 py-0.5 uppercase tracking-widest font-bold rounded-sm">
-                  EVENT
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onClose(); }}
-                  className="text-black/40 hover:text-red-600 transition"
+                {/* محتوای تیکت */}
+                <div className="border-l-[6px] border-black h-full p-4 flex flex-col relative overflow-hidden bg-[#f0f0f0]">
+                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
+                    
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="bg-black text-white text-[9px] px-2 py-0.5 font-bold tracking-[0.2em] uppercase rounded-sm">EVENT</span>
+                        <button onClick={(e) => {e.stopPropagation(); onClose();}} className="text-black/30 hover:text-red-600 transition"><X size={16}/></button>
+                    </div>
+
+                    <h3 className="text-lg font-black leading-tight mb-1">
+                        {isFa ? event.title.fa : event.title.en}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 line-clamp-1 font-mono">
+                        {isFa ? event.description.fa : event.description.en}
+                    </p>
+                </div>
+            </motion.div>
+
+            {/* دکمه ثبت‌نام آویزان (Hanging Button) */}
+            {event.enableRegister && (
+                <motion.button
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: -4, opacity: 1 }}
+                    whileHover={{ y: 0, scale: 1.05 }}
+                    onClick={onRegisterClick}
+                    className="mr-6 bg-yellow-500 text-black font-bold text-xs px-5 py-2.5 rounded-b-xl shadow-lg border-t-0 border-2 border-yellow-600 z-40 flex items-center gap-2 animate-pulse hover:animate-none"
                 >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <h3 className={`text-lg font-black uppercase leading-tight ${isFa ? "font-vazir" : "font-sans"}`}>
-                {isFa ? event.title.fa : event.title.en}
-              </h3>
-              
-              <p className="text-[10px] font-serif text-gray-600 leading-relaxed line-clamp-2">
-                {isFa ? event.description.fa : event.description.en}
-              </p>
-
-              <div className="mt-2 w-full flex justify-end">
-                <span className="text-[10px] font-bold underline decoration-1 underline-offset-2 hover:bg-black hover:text-white transition px-2 py-1 rounded">
-                  {event.buttonText || (isFa ? "جزئیات و ثبت‌نام" : "Details & Register")} &rarr;
-                </span>
-              </div>
-            </div>
-          </motion.div>
+                    <Ticket size={14} /> {t.registerNow}
+                </motion.button>
+            )}
+          </div>
         )}
       </AnimatePresence>
 
-      {/* --- Full Modal --- */}
+      {/* --- مودال باز شده (Full Content) --- */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="bg-[#111] text-white w-full max-w-lg h-[85vh] md:h-[700px] shadow-2xl rounded-xl border border-white/10 flex flex-col overflow-hidden"
-            dir={isFa ? "rtl" : "ltr"}
-          >
-            <div className="bg-black/80 p-4 border-b border-white/10 flex justify-between items-center shrink-0 backdrop-blur">
-              <h2 className="font-bold text-white font-vazir text-sm md:text-base flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getLightStyle().backgroundColor }}></span>
-                {isFa ? "دبیرخانه جشنواره" : "Festival Secretariat"}
-              </h2>
-              <button onClick={() => setIsOpen(false)} className="hover:text-red-500 transition text-white/60">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex border-b border-white/10 bg-black/40 shrink-0">
-              <TabButton active={activeTab === "info"} onClick={() => setActiveTab("info")} icon={Info} label={isFa ? "اطلاعات" : "Info"} />
-              
-              {onCallForEntriesClick && (
-                <button
-                  onClick={() => { setIsOpen(false); onCallForEntriesClick(); }}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold text-[#ffd700] bg-[#ffd700]/5 hover:bg-[#ffd700]/10 border-b-2 border-[#ffd700]/50 transition"
-                >
-                  <FileText size={14} /> {isFa ? "فراخوان" : "Call"}
-                </button>
-              )}
-              
-              {event.enableChat && (
-                <TabButton active={activeTab === "chat"} onClick={() => setActiveTab("chat")} icon={MessageSquare} label={event.aiName || (isFa ? "چت" : "AI Chat")} />
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-0 bg-[#0a0a0a] relative">
-              <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
-
-              {activeTab === "info" && (
-                <div className="p-6 space-y-6 text-sm text-gray-300 relative z-10">
-                  {event.posterUrl && (
-                    <div className="rounded-lg overflow-hidden border border-white/10 shadow-lg">
-                      <img src={event.posterUrl} className="w-full object-cover" alt="Poster" />
-                    </div>
-                  )}
-                  
-                  <div className="bg-white/5 p-5 rounded-lg border border-white/5">
-                    <h3 className="text-[#ffd700] font-bold text-lg mb-3 font-vazir">
-                      {isFa ? event.title.fa : event.title.en}
-                    </h3>
-                    <p className="text-xs leading-7 text-justify opacity-80">
-                      {isFa ? event.description.fa : event.description.en}
-                    </p>
-                  </div>
-
-                  <ul className="space-y-3 text-xs border-t border-white/10 pt-4">
-                    <li className="flex justify-between">
-                      <span className="text-white/50">{isFa ? "مهلت ارسال:" : "Deadline:"}</span>
-                      <span className="text-white font-mono">{event.date}</span>
-                    </li>
-                    {event.mainLink && (
-                      <li className="flex justify-between">
-                        <span className="text-white/50">{isFa ? "وبسایت:" : "Website:"}</span>
-                        <a href={`https://${event.mainLink}`} target="_blank" className="text-blue-400 hover:underline">{event.mainLink}</a>
-                      </li>
-                    )}
-                  </ul>
-
-                  {event.enableRegister && (
-                    <button
-                      onClick={() => { setIsOpen(false); onRegisterClick(); }}
-                      className="w-full bg-white text-black font-black py-4 rounded-lg mt-4 hover:bg-[#ffd700] transition-colors shadow-lg text-sm"
-                    >
-                      {isFa ? "ورود به فرم ثبت‌نام" : "Register Now"}
-                    </button>
-                  )}
+          <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#111] text-white w-full max-w-md h-[650px] rounded-xl border border-white/10 flex flex-col overflow-hidden shadow-2xl relative font-vazir"
+              dir={isFa ? "rtl" : "ltr"}
+            >
+                {/* هدر مودال */}
+                <div className="bg-black/50 p-4 border-b border-white/10 flex justify-between items-center shrink-0">
+                    <h2 className="font-bold text-lg text-yellow-500">{t.hubTitle}</h2>
+                    <button onClick={() => setIsOpen(false)} className="bg-white/10 hover:bg-red-500/80 p-1.5 rounded-full transition text-white"><X size={18}/></button>
                 </div>
-              )}
 
-              {activeTab === "chat" && event.enableChat && (
-                <div className="flex flex-col h-full relative z-10">
-                  <div className="flex-1 space-y-4 overflow-y-auto p-4">
-                    {messages.length === 0 && (
-                      <div className="flex flex-col items-center justify-center h-full text-white/20">
-                        <MessageSquare size={40} strokeWidth={1} />
-                        <p className="text-xs mt-2">{isFa ? "سوالات خود را بپرسید..." : "Ask me anything..."}</p>
-                      </div>
+                {/* تب‌ها */}
+                <div className="flex bg-black/30 border-b border-white/10 shrink-0">
+                    <button onClick={() => setActiveTab('info')} className={`flex-1 py-3 text-xs font-bold transition flex items-center justify-center gap-2 ${activeTab==='info' ? 'bg-white/10 text-white border-b-2 border-yellow-500' : 'text-gray-500 hover:text-white'}`}>
+                        <Info size={14}/> {t.info}
+                    </button>
+                    {event.enableChat && (
+                        <button onClick={() => setActiveTab('chat')} className={`flex-1 py-3 text-xs font-bold transition flex items-center justify-center gap-2 ${activeTab==='chat' ? 'bg-white/10 text-white border-b-2 border-yellow-500' : 'text-gray-500 hover:text-white'}`}>
+                            <MessageSquare size={14}/> {t.chat}
+                        </button>
                     )}
-                    {messages.map((m, i) => (
-                      <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
-                        <div className={`p-3 rounded-2xl text-xs max-w-[85%] leading-6 ${m.role === "user" ? "bg-white text-black rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm border border-white/5"}`}>
-                          {m.text}
+                </div>
+
+                {/* بدنه محتوا */}
+                <div className="flex-1 overflow-y-auto p-0 relative bg-[#0a0a0a]">
+                    
+                    {/* تب اطلاعات */}
+                    {activeTab === 'info' && (
+                        <div className="p-6 space-y-6">
+                            {event.posterUrl ? (
+                                <img src={event.posterUrl} className="w-full rounded-lg border border-white/10 shadow-lg object-cover" alt="Poster" />
+                            ) : (
+                                <div className="w-full h-40 bg-white/5 rounded-lg flex items-center justify-center text-white/20 text-xs border border-white/5 border-dashed">پوستر موجود نیست</div>
+                            )}
+                            
+                            <div>
+                                <h3 className="text-white font-bold text-lg mb-2">{isFa ? event.title.fa : event.title.en}</h3>
+                                <p className="text-xs text-gray-400 leading-7 text-justify">{isFa ? event.description.fa : event.description.en}</p>
+                            </div>
+
+                            <div className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 text-xs">
+                                <div className="flex justify-between border-b border-white/5 pb-2">
+                                    <span className="text-white/50">{t.deadline}</span>
+                                    <span className="text-yellow-500 font-mono tracking-wider">{event.date}</span>
+                                </div>
+                                {event.mainLink && (
+                                    <div className="flex justify-between">
+                                        <span className="text-white/50">{t.website}</span>
+                                        <a href={`https://${event.mainLink}`} target="_blank" className="text-blue-400 hover:underline">{event.mainLink}</a>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* دکمه خواندن فراخوان (شیشه‌ای) */}
+                            {onCallForEntriesClick && (
+                                <button onClick={() => { setIsOpen(false); onCallForEntriesClick(); }} className="w-full border border-white/20 py-3 rounded-lg text-xs text-white/70 hover:bg-white/10 hover:text-white transition flex items-center justify-center gap-2 group">
+                                    <FileText size={14} className="group-hover:scale-110 transition"/> {t.readManifesto}
+                                </button>
+                            )}
+                            
+                            <div className="h-10"></div> {/* فضای خالی برای فوتر */}
                         </div>
-                      </div>
-                    ))}
-                    {chatLoading && <div className="text-center"><Loader2 className="animate-spin text-white/30 inline-block" size={20} /></div>}
-                    <div ref={chatEndRef}></div>
-                  </div>
-                  
-                  <form onSubmit={handleChatSend} className="p-4 bg-black/40 border-t border-white/10 flex gap-2">
-                    <input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="..."
-                      className="flex-1 bg-black/50 border border-white/20 rounded-lg px-4 py-3 text-white text-xs outline-none focus:border-white/50 transition"
-                    />
-                    <button type="submit" disabled={chatLoading} className="bg-white text-black p-3 rounded-lg hover:scale-105 transition disabled:opacity-50">
-                      <Send size={18} />
-                    </button>
-                  </form>
+                    )}
+
+                    {/* تب چت */}
+                    {activeTab === 'chat' && (
+                        <div className="flex flex-col h-full">
+                            <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+                                {messages.length===0 && (
+                                    <div className="h-full flex flex-col items-center justify-center text-white/20 space-y-3">
+                                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center"><MessageSquare size={32} strokeWidth={1}/></div>
+                                        <p className="text-xs">{t.welcomeChat}</p>
+                                    </div>
+                                )}
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'}`}>
+                                        <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-6 ${m.role==='user'?'bg-white text-black rounded-br-none':'bg-white/10 text-white rounded-bl-none border border-white/5'}`}>{m.text}</div>
+                                    </div>
+                                ))}
+                                {chatLoading && <div className="text-center"><Loader2 className="animate-spin text-white/30 inline-block" size={20}/></div>}
+                                <div ref={chatEndRef}></div>
+                            </div>
+                            <form onSubmit={handleChatSend} className="p-3 border-t border-white/10 bg-black/40 flex gap-2 shrink-0">
+                                <input value={input} onChange={e=>setInput(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-xs text-white outline-none focus:border-white/30 transition" placeholder={t.placeholder} />
+                                <button disabled={chatLoading} className="bg-white text-black p-3 rounded-lg hover:bg-gray-200 transition"><Send size={16}/></button>
+                            </form>
+                            <div className="h-10"></div> {/* فضای خالی برای فوتر */}
+                        </div>
+                    )}
                 </div>
-              )}
-            </div>
-          </motion.div>
+
+                {/* فوتر ثابت (Sticky Footer): دکمه ثبت نام */}
+                {event.enableRegister && (
+                    <div className="p-4 bg-gradient-to-t from-black via-black to-black/80 border-t border-white/10 backdrop-blur shrink-0 absolute bottom-0 left-0 right-0 z-20">
+                        <button 
+                            onClick={() => { setIsOpen(false); onRegisterClick(); }}
+                            className="w-full bg-yellow-500 text-black font-black py-3 rounded-lg shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2 text-sm"
+                        >
+                            {t.registerNow} <ChevronLeft size={16} className={isFa ? "" : "rotate-180"}/>
+                        </button>
+                    </div>
+                )}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
-
-const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition border-b-2 ${active ? "bg-white/10 text-white border-white" : "text-gray-500 border-transparent hover:text-gray-300"}`}
-  >
-    <Icon size={14} /> {label}
-  </button>
-);
 
 export default SpecialEvent;
