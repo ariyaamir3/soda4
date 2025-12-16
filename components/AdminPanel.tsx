@@ -4,7 +4,7 @@ import { getRegistrations, getContactMessages, uploadFile } from '../services/fi
 import { 
   X, Save, Edit2, Menu, Database, Loader2, Download, Users, Mail, Trash2, 
   Sparkles, Lock, Briefcase, FileText, Info, Eye, Film, Plus, Upload, 
-  CheckCircle2, AlertCircle, RefreshCw, Calendar, MonitorPlay, Settings, Ticket
+  CheckCircle2, AlertCircle, RefreshCw, Calendar, Settings, Ticket, MonitorPlay
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -15,34 +15,30 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => {
-  // 🔐 امنیت: لاجیک رمز عبور
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-
   // استیت‌های اصلی
   const [formData, setFormData] = useState<SiteContent>(content || DEFAULT_CONTENT);
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'special_event' | 'menu' | 'works' | 'events' | 'articles' | 'registrations' | 'inbox' | 'about'>('general');
+  const [activeTab, setActiveTab] = useState<string>('general');
   
   // داده‌های دیتابیس
   const [registrations, setRegistrations] = useState<FullRegistrationData[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   
-  // وضعیت آپلود و ذخیره
+  // مدیریت آپلود و ذخیره
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [aiConnectionStatus, setAiConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-
-  // مودال‌ها
+  
+  // مودال نمایش جزئیات
   const [selectedReg, setSelectedReg] = useState<FullRegistrationData | null>(null);
 
-  // تابع کمکی برای مقادیر امن
+  // تابع کمکی برای جلوگیری از ارور متن‌های خالی
   const safeVal = (val: any) => {
       if (typeof val === 'object' && val !== null) return val.fa || val.en || '';
       return val || '';
   };
 
-  // لود اولیه داده‌ها
+  // لود کردن داده‌ها هنگام تغییر تب
   useEffect(() => {
     if (activeTab === 'registrations') fetchData('regs');
     if (activeTab === 'inbox') fetchData('msgs');
@@ -63,7 +59,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
     setLoadingData(false);
   };
 
-  // تست اتصال هوش مصنوعی (ماک)
+  // تست اتصال هوش مصنوعی (شبیه‌سازی)
   const checkAiConnection = () => {
       setAiConnectionStatus('checking');
       setTimeout(() => {
@@ -71,21 +67,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
       }, 1500);
   };
 
-  // هندل کردن ورود
-  const handleLogin = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (passwordInput === 'hope') setIsAuthenticated(true);
-      else alert('رمز عبور اشتباه است!');
-  };
-
-  // 📤 مدیریت آپلود یکپارچه
-  const handleFileUpload = async (file: File, fieldKey: string, index?: number, subKey?: string) => {
-    setUploadingField(fieldKey + (index !== undefined ? index : ''));
+  // مدیریت آپلود فایل برای تمام بخش‌ها
+  const handleFileUpload = async (file: File, fieldKey: string, index?: number) => {
+    // ایجاد کلید یکتا برای لودینگ همان دکمه خاص
+    const loadingKey = fieldKey + (index !== undefined ? index : '');
+    setUploadingField(loadingKey);
+    
     try {
       const url = await uploadFile(file);
       const newData = { ...formData };
 
-      // لاجیک آپلود برای بخش‌های مختلف
       if (fieldKey === 'logo') newData.logoUrl = url;
       else if (fieldKey === 'video') newData.videoUrl = url;
       else if (fieldKey === 'poster') newData.posterUrl = url;
@@ -95,23 +86,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
           newData.specialEvent!.posterUrl = url;
       }
       else if (fieldKey === 'article' && typeof index === 'number') {
+          if (!newData.articles) newData.articles = [];
           newData.articles[index].coverUrl = url;
       }
       else if (fieldKey === 'work' && typeof index === 'number') {
+          if (!newData.works) newData.works = [];
           newData.works[index].imageUrl = url;
       }
       else if (fieldKey === 'event' && typeof index === 'number') {
+          if (!newData.eventsList) newData.eventsList = [];
           newData.eventsList[index].imageUrl = url;
       }
 
       setFormData(newData);
     } catch (e) { 
-        alert("آپلود ناموفق بود."); 
+        alert("آپلود ناموفق بود. اتصال اینترنت یا تنظیمات لیارا را بررسی کنید."); 
     }
     setUploadingField(null);
   };
 
-  // 💾 ذخیره با فیدبک بصری (سبز/قرمز)
+  // ذخیره نهایی با فیدبک رنگی
   const handleSubmit = async () => {
     try {
         await onSave(formData);
@@ -123,11 +117,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
     }
   };
 
-  // افزودن آیتم‌ها
+  // توابع افزودن آیتم جدید
   const addArticle = () => setFormData({ ...formData, articles: [...(formData.articles || []), { id: Date.now().toString(), title: {fa:'عنوان جدید',en:'New'}, summary: {fa:'',en:''}, content: {fa:'',en:''}, author: {fa:'تحریریه',en:'Editorial'}, date: '1404', coverUrl: '', tags: '' }] });
   const addWork = () => setFormData({ ...formData, works: [...(formData.works || []), { id: Date.now().toString(), title: {fa:'اثر جدید',en:'New'}, year: '2025', imageUrl: '', link: '', description: '' }] });
   const addEvent = () => setFormData({ ...formData, eventsList: [...(formData.eventsList || []), { id: Date.now().toString(), title: 'رویداد جدید', date: '', description: '', imageUrl: '', isActive: true }] });
-  const addMenuItem = () => setFormData({ ...formData, menuItems: [...(formData.menuItems || []), { id: Date.now().toString(), title: {fa:'منو',en:'Menu'}, link: '#' }] });
+  const addMenuItem = () => setFormData({ ...formData, menuItems: [...(formData.menuItems || []), { id: Date.now().toString(), title: {fa:'منو',en:'Menu'}, link: '#', description: {fa:'',en:''} }] });
 
   // خروجی اکسل
   const exportToCSV = () => {
@@ -137,18 +131,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
       const csv = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
       const link = document.createElement("a"); link.href = encodeURI(csv); link.download = "registrations.csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
-
-  if (!isAuthenticated) return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95">
-          <div className="bg-[#111] p-8 rounded-xl border border-white/10 text-center w-80">
-              <Lock size={40} className="text-yellow-500 mx-auto mb-4"/>
-              <form onSubmit={handleLogin} className="space-y-4">
-                  <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full bg-black border border-white/20 p-3 rounded text-white text-center tracking-[5px] outline-none focus:border-yellow-500" placeholder="••••" autoFocus />
-                  <button type="submit" className="w-full bg-white text-black font-bold py-2 rounded">ورود</button>
-              </form>
-          </div>
-      </div>
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 font-vazir" dir="rtl">
@@ -172,18 +154,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                       <div><span className="text-white/40 block text-xs">بخش:</span> {safeVal(selectedReg.section)}</div>
                       <div className="col-span-full bg-white/5 p-4 rounded"><span className="text-white/40 block text-xs mb-2">خلاصه داستان:</span> {safeVal(selectedReg.synopsis || selectedReg.logline)}</div>
                       <div className="col-span-full flex gap-2">
-                          {selectedReg.filmLink && <a href={selectedReg.filmLink} target="_blank" className="flex-1 bg-blue-600 text-white py-2 rounded text-center text-xs">دانلود فیلم</a>}
-                          {selectedReg.posterLink && <a href={selectedReg.posterLink} target="_blank" className="flex-1 bg-gray-700 text-white py-2 rounded text-center text-xs">مشاهده پوستر</a>}
+                          {selectedReg.filmLink && <a href={selectedReg.filmLink} target="_blank" className="flex-1 bg-blue-600 text-white py-2 rounded text-center text-xs hover:bg-blue-500">دانلود فیلم</a>}
+                          {selectedReg.posterLink && <a href={selectedReg.posterLink} target="_blank" className="flex-1 bg-gray-700 text-white py-2 rounded text-center text-xs hover:bg-gray-600">مشاهده پوستر</a>}
                       </div>
                   </div>
               </div>
           </div>
       )}
 
+      {/* بدنه اصلی پنل */}
       <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-7xl h-[90vh] flex flex-col rounded-xl overflow-hidden shadow-2xl">
+        
+        {/* هدر */}
         <div className="flex justify-between items-center p-5 border-b border-white/5 bg-[#0a0a0a]">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-light text-white flex items-center gap-3"><Edit2 size={20} className="text-yellow-500" /> <span className="font-bold">پنل مدیریت</span></h2>
+            <h2 className="text-xl font-light text-white flex items-center gap-3">
+                <Edit2 size={20} className="text-yellow-500" /> 
+                <span className="font-bold">پنل مدیریت</span>
+            </h2>
             <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full text-[10px] text-gray-400">
                 <div className={`w-2 h-2 rounded-full ${saveStatus === 'success' ? 'bg-green-500' : saveStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'}`}></div>
                 {saveStatus === 'success' ? 'ذخیره شد' : 'آماده'}
@@ -213,17 +201,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                 <TabBtn active={activeTab==='menu'} onClick={()=>setActiveTab('menu')} icon={Menu} label="منو" />
                 <TabBtn active={activeTab==='about'} onClick={()=>setActiveTab('about')} icon={Info} label="درباره ما" />
             </div>
-
+            
             {/* محتوا */}
-            <div className="flex-1 p-8 overflow-y-auto bg-[#0f0f0f] text-white custom-scrollbar relative">
+            <div className="flex-1 p-8 overflow-y-auto bg-[#0f0f0f] text-white custom-scrollbar">
                 
-                {/* --- تب عمومی (General) --- */}
+                {/* --- تب عمومی --- */}
                 {activeTab === 'general' && (
                     <div className="space-y-8 max-w-3xl animate-in fade-in">
                         <div className="bg-white/5 border border-white/10 p-6 rounded-xl space-y-6">
                             <h4 className="text-white/60 text-sm font-bold border-b border-white/10 pb-2">فایل‌های اصلی</h4>
                             
-                            {/* ویدیو */}
                             <div className="space-y-2">
                                 <label className="text-xs text-gray-400">ویدیو پس‌زمینه</label>
                                 <div className="flex gap-2">
@@ -232,7 +219,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                                 </div>
                             </div>
 
-                            {/* لوگو */}
                             <div className="space-y-2">
                                 <label className="text-xs text-gray-400">لوگو سایت</label>
                                 <div className="flex gap-2 items-center">
@@ -246,7 +232,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                                 </div>
                             </div>
 
-                            {/* لودر */}
                             <div className="space-y-2">
                                 <label className="text-xs text-gray-400">تصویر لودر (اسب سوار)</label>
                                 <div className="flex gap-2 items-center">
@@ -255,6 +240,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                                     {formData.loaderUrl && <img src={formData.loaderUrl} className="w-8 h-8 object-contain bg-white/10 rounded" />}
                                 </div>
                             </div>
+
+                            <InputGroup label="نام شرکت (فارسی)" value={formData.companyName?.fa} onChange={v => setFormData({...formData, companyName: {...formData.companyName!, fa: v}})} />
                         </div>
 
                         <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-xl">
@@ -266,7 +253,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                     </div>
                 )}
 
-                {/* --- تب هوش مصنوعی (AI) --- */}
+                {/* --- تب هوش مصنوعی --- */}
                 {activeTab === 'ai' && (
                     <div className="space-y-6 max-w-3xl animate-in fade-in">
                         <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10">
@@ -307,7 +294,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                     </div>
                 )}
 
-                {/* --- تب بنر و فراخوان (Special Event) --- */}
+                {/* --- تب بنر --- */}
                 {activeTab === 'special_event' && (
                     <div className="space-y-6 max-w-3xl animate-in fade-in">
                         <div className="flex items-center gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
@@ -316,22 +303,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                         </div>
 
                         <div className="grid grid-cols-2 gap-6 bg-white/5 p-6 rounded-xl border border-white/10">
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-2">استایل بلیت</label>
-                                <select value={formData.specialEvent?.ticketStyle || 'cinema'} onChange={e => setFormData({...formData, specialEvent: {...formData.specialEvent!, ticketStyle: e.target.value as any}})} className="w-full bg-black border border-white/20 p-2 rounded text-xs">
-                                    <option value="cinema">سینمایی (سوراخ‌دار)</option>
-                                    <option value="modern">مدرن (ساده)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-2">موقعیت قرارگیری</label>
-                                <select value={formData.specialEvent?.position || 'top-right'} onChange={e => setFormData({...formData, specialEvent: {...formData.specialEvent!, position: e.target.value as any}})} className="w-full bg-black border border-white/20 p-2 rounded text-xs">
-                                    <option value="top-right">بالا - راست</option>
-                                    <option value="top-left">بالا - چپ</option>
-                                    <option value="bottom-right">پایین - راست</option>
-                                    <option value="bottom-left">پایین - چپ</option>
-                                </select>
-                            </div>
                             <div>
                                 <label className="text-xs text-gray-400 block mb-2">رنگ چراغ</label>
                                 <select value={formData.specialEvent?.lightColor} onChange={e => setFormData({...formData, specialEvent: {...formData.specialEvent!, lightColor: e.target.value as any}})} className="w-full bg-black border border-white/20 p-2 rounded text-xs">
@@ -360,42 +331,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                     </div>
                 )}
 
-                {/* --- تب رویدادها (Events) --- */}
-                {activeTab === 'events' && (
+                {/* --- تب منو (اصلاح شده) --- */}
+                {activeTab === 'menu' && (
                     <div className="space-y-6 animate-in fade-in">
-                        <div className="flex justify-between items-center"><h3 className="font-bold">رویدادها و ورکشاپ‌ها</h3><button onClick={addEvent} className="bg-yellow-600 px-3 py-1 rounded text-xs flex items-center gap-1"><Plus size={12}/> جدید</button></div>
-                        {formData.eventsList?.map((ev, i) => (
-                            <div key={ev.id || i} className="bg-white/5 p-4 rounded border border-white/10 relative space-y-3">
-                                <button onClick={() => {const n=formData.eventsList!.filter((_, idx)=>idx!==i); setFormData({...formData, eventsList:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <InputGroup label="عنوان" value={ev.title} onChange={v => {const n=[...formData.eventsList!]; n[i].title=v; setFormData({...formData, eventsList:n})}} />
-                                    <InputGroup label="تاریخ" value={ev.date} onChange={v => {const n=[...formData.eventsList!]; n[i].date=v; setFormData({...formData, eventsList:n})}} />
+                        <button onClick={addMenuItem} className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition">+ افزودن آیتم جدید به منو</button>
+                        
+                        {(!formData.menuItems || formData.menuItems.length === 0) && (
+                            <div className="text-center text-white/30 py-10 bg-white/5 rounded-xl border border-white/5">منو خالی است.</div>
+                        )}
+
+                        {formData.menuItems?.map((item, i) => (
+                            <div key={i} className="flex gap-3 items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/20 transition">
+                                <div className="flex-1">
+                                    <label className="text-[9px] text-gray-500 block mb-1">عنوان فارسی</label>
+                                    <input value={safeVal(item.title?.fa)} onChange={e => {const n=[...formData.menuItems]; n[i].title.fa=e.target.value; setFormData({...formData, menuItems:n})}} className="w-full bg-black/30 border border-white/10 text-xs p-2 rounded text-white" />
                                 </div>
-                                <div className="flex gap-2 items-end">
-                                    <div className="flex-1"><label className="text-[10px] text-gray-500">تصویر رویداد</label><input value={ev.imageUrl || ''} onChange={e => {const n=[...formData.eventsList!]; n[i].imageUrl=e.target.value; setFormData({...formData, eventsList:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" /></div>
-                                    <UploadBtn uploading={uploadingField === 'event'+i} onUpload={f => handleFileUpload(f, 'event', i)} />
-                                    {ev.imageUrl && <img src={ev.imageUrl} className="w-8 h-8 rounded object-cover" />}
+                                <div className="flex-1">
+                                    <label className="text-[9px] text-gray-500 block mb-1">Link Key</label>
+                                    <input value={safeVal(item.link)} onChange={e => {const n=[...formData.menuItems]; n[i].link=e.target.value; setFormData({...formData, menuItems:n})}} className="w-full bg-black/30 border border-white/10 text-xs p-2 rounded text-white font-mono" placeholder="works, articles..." dir="ltr" />
                                 </div>
-                                <textarea value={ev.description} onChange={e => {const n=[...formData.eventsList!]; n[i].description=e.target.value; setFormData({...formData, eventsList:n})}} className="w-full bg-black p-2 h-20 text-xs rounded border border-white/10" placeholder="توضیحات..." />
+                                <button onClick={() => {const n=formData.menuItems.filter((_, idx)=>idx!==i); setFormData({...formData, menuItems:n})}} className="text-white/30 hover:text-red-500 p-2 mt-4"><Trash2 size={16}/></button>
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* --- تب مقالات (Articles) --- */}
-                {activeTab === 'articles' && (
-                    <div className="space-y-6">
-                        <button onClick={addArticle} className="bg-yellow-600 px-3 py-1 rounded text-xs">+ مقاله جدید</button>
-                        {formData.articles?.map((art, i) => (
-                            <div key={art.id} className="bg-white/5 p-4 rounded border border-white/10 space-y-3 relative">
-                                <button onClick={() => {const n=formData.articles!.filter((_, idx)=>idx!==i); setFormData({...formData, articles:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
-                                <InputGroup label="عنوان" value={safeVal(art.title)} onChange={v => {const n=[...formData.articles!]; n[i].title=v; setFormData({...formData, articles:n})}} />
-                                <div className="flex gap-2 items-end">
-                                    <div className="flex-1"><label className="text-[10px] text-gray-500">کاور مقاله</label><input value={art.coverUrl || ''} onChange={e => {const n=[...formData.articles!]; n[i].coverUrl=e.target.value; setFormData({...formData, articles:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" /></div>
-                                    <UploadBtn uploading={uploadingField === 'article'+i} onUpload={f => handleFileUpload(f, 'article', i)} />
-                                    {art.coverUrl && <img src={art.coverUrl} className="w-8 h-8 rounded object-cover" />}
+                {/* --- تب رویدادها (بازسازی شده) --- */}
+                {activeTab === 'events' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <button onClick={addEvent} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition">+ افزودن رویداد جدید</button>
+                        {formData.eventsList?.map((ev, i) => (
+                            <div key={ev.id || i} className="bg-white/5 p-4 rounded border border-white/10 relative space-y-3">
+                                <button onClick={() => {const n=formData.eventsList.filter((_, idx)=>idx!==i); setFormData({...formData, eventsList:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <InputGroup label="عنوان" value={ev.title} onChange={v => {const n=[...formData.eventsList]; n[i].title=v; setFormData({...formData, eventsList:n})}} />
+                                    <InputGroup label="تاریخ" value={ev.date} onChange={v => {const n=[...formData.eventsList]; n[i].date=v; setFormData({...formData, eventsList:n})}} />
                                 </div>
-                                <textarea value={safeVal(art.content)} onChange={e => {const n=[...formData.articles!]; n[i].content=e.target.value; setFormData({...formData, articles:n})}} className="w-full bg-black p-2 h-32 text-xs rounded" placeholder="متن مقاله..." />
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1"><label className="text-[10px] text-gray-500">تصویر رویداد</label><input value={ev.imageUrl || ''} onChange={e => {const n=[...formData.eventsList]; n[i].imageUrl=e.target.value; setFormData({...formData, eventsList:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" /></div>
+                                    <UploadBtn uploading={uploadingField === 'event'+i} onUpload={f => handleFileUpload(f, 'event', i)} />
+                                    {ev.imageUrl && <img src={ev.imageUrl} className="w-8 h-8 rounded object-cover" />}
+                                </div>
+                                <textarea value={ev.description} onChange={e => {const n=[...formData.eventsList]; n[i].description=e.target.value; setFormData({...formData, eventsList:n})}} className="w-full bg-black p-2 h-20 text-xs rounded border border-white/10" placeholder="توضیحات..." />
                             </div>
                         ))}
                     </div>
@@ -404,14 +381,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                 {/* --- تب آثار (Works) --- */}
                 {activeTab === 'works' && (
                     <div className="space-y-6">
-                        <button onClick={addWork} className="bg-blue-600 px-3 py-1 rounded text-xs">+ اثر جدید</button>
-                        <div className="grid grid-cols-2 gap-4">
+                        <button onClick={addWork} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition">+ افزودن اثر جدید</button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {formData.works?.map((w, i) => (
                                 <div key={w.id} className="bg-white/5 p-4 rounded border border-white/10 relative space-y-2">
-                                    <button onClick={() => {const n=formData.works!.filter((_, idx)=>idx!==i); setFormData({...formData, works:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
-                                    <InputGroup label="عنوان" value={safeVal(w.title?.fa)} onChange={v => {const n=[...formData.works!]; n[i].title.fa=v; setFormData({...formData, works:n})}} />
+                                    <button onClick={() => {const n=formData.works.filter((_, idx)=>idx!==i); setFormData({...formData, works:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
+                                    <InputGroup label="عنوان" value={safeVal(w.title?.fa)} onChange={v => {const n=[...formData.works]; n[i].title.fa=v; setFormData({...formData, works:n})}} />
                                     <div className="flex gap-2 items-end">
-                                        <div className="flex-1"><input value={w.imageUrl || ''} onChange={e => {const n=[...formData.works!]; n[i].imageUrl=e.target.value; setFormData({...formData, works:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" placeholder="کاور..." /></div>
+                                        <div className="flex-1"><input value={w.imageUrl || ''} onChange={e => {const n=[...formData.works]; n[i].imageUrl=e.target.value; setFormData({...formData, works:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" placeholder="کاور..." /></div>
                                         <UploadBtn uploading={uploadingField === 'work'+i} onUpload={f => handleFileUpload(f, 'work', i)} />
                                         {w.imageUrl && <img src={w.imageUrl} className="w-8 h-8 rounded object-cover" />}
                                     </div>
@@ -421,7 +398,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                     </div>
                 )}
 
-                {/* --- تب درباره ما (About) --- */}
+                {/* --- تب مقالات (Articles) --- */}
+                {activeTab === 'articles' && (
+                    <div className="space-y-6">
+                        <button onClick={addArticle} className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition">+ مقاله جدید</button>
+                        {formData.articles?.map((art, i) => (
+                            <div key={art.id} className="bg-white/5 p-4 rounded border border-white/10 space-y-3 relative">
+                                <button onClick={() => {const n=formData.articles.filter((_, idx)=>idx!==i); setFormData({...formData, articles:n})}} className="absolute top-2 left-2 text-red-500"><Trash2 size={14}/></button>
+                                <InputGroup label="عنوان" value={safeVal(art.title)} onChange={v => {const n=[...formData.articles]; n[i].title=v; setFormData({...formData, articles:n})}} />
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1"><label className="text-[10px] text-gray-500">کاور مقاله</label><input value={art.coverUrl || ''} onChange={e => {const n=[...formData.articles]; n[i].coverUrl=e.target.value; setFormData({...formData, articles:n})}} className="w-full bg-black/50 border border-white/20 p-2 rounded text-xs" /></div>
+                                    <UploadBtn uploading={uploadingField === 'article'+i} onUpload={f => handleFileUpload(f, 'article', i)} />
+                                    {art.coverUrl && <img src={art.coverUrl} className="w-8 h-8 rounded object-cover" />}
+                                </div>
+                                <textarea value={safeVal(art.content)} onChange={e => {const n=[...formData.articles]; n[i].content=e.target.value; setFormData({...formData, articles:n})}} className="w-full bg-black p-2 h-32 text-xs rounded" placeholder="متن مقاله..." />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* --- تب درباره ما --- */}
                 {activeTab === 'about' && (
                     <div className="space-y-6 animate-in fade-in">
                         <h4 className="text-white font-bold border-b border-white/10 pb-2">متن و شبکه‌های اجتماعی</h4>
@@ -472,7 +468,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
                         )}
                     </div>
                 )}
-
             </div>
         </div>
 
@@ -492,7 +487,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ content, onSave, onClose }) => 
   );
 };
 
-// کامپوننت‌های کمکی
 const TabBtn = ({ active, onClick, icon: Icon, label, count }: any) => (
     <button onClick={onClick} className={`flex items-center justify-between p-3 rounded-lg text-xs font-bold w-full transition-all ${active ? 'bg-white text-black shadow-lg shadow-white/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
         <div className="flex items-center gap-3"><Icon size={16}/> {label}</div>
@@ -500,10 +494,10 @@ const TabBtn = ({ active, onClick, icon: Icon, label, count }: any) => (
     </button>
 );
 
-const InputGroup = ({ label, value, onChange }: any) => (
+const InputGroup = ({ label, value, onChange, placeholder }: any) => (
   <div className="w-full">
       <label className="block text-[10px] text-gray-500 mb-1">{label}</label>
-      <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} className="w-full bg-black/50 border-b border-white/20 py-2 text-white outline-none text-xs focus:border-white transition" />
+      <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-black/50 border-b border-white/20 py-2 text-white outline-none text-xs focus:border-white transition" />
   </div>
 );
 
